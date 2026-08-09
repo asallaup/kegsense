@@ -215,17 +215,9 @@ via(143.46, 12, "VCC_3V3")
 track(143.46, 12, 143.46, 36.02, "F.Cu", "VCC_3V3")  # -> J7 pad2 (143.46,36.02)
 
 # -- silkscreen branding --
-# First attempt (30,58) at 3mm overlapped J2/J4's reference-label text -
-# the J1-J4 column's silkscreen labels extend further right than their
-# courtyards alone suggest. Moved into the gap between J2 and J4
-# specifically (y=59-71, clear of both), smaller and further from the
-# J-column (x=23 courtyard edge) to give real margin.
-silk_text("KegSensor", 26, 63, 2.2)
-silk_text("Sallaup Electronics", 26, 67, 1.2)
-
-# Branding + rev/date, also on the right (in addition to the left-side
-# copy above) - large open area right of J5/below the J6<->J7 routing
-# (that routing stays y<=52; nothing else occupies x=60-155, y=52-90).
+# Right side only (an earlier left-side copy, between J2 and J4, was
+# removed) - large open area right of J5/below the J6<->J7 routing (that
+# routing stays y<=52; nothing else occupies x=60-155, y=52-90).
 silk_text("KegSensor", 100, 58, 2.2)
 silk_text("Sallaup Electronics", 100, 62, 1.2)
 silk_text("Rev A", 100, 68, 2.2)
