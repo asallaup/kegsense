@@ -1,4 +1,4 @@
-// Keg Sensor Module - 3D printable case
+// KegSensor (Sallaup Electronics / Sallaup KegSense) - 3D printable case
 // Board: 155 x 90 x 1.6mm, mounting holes (M3 clearance) at (6,6) (150,6)
 // (6,84) (150,84) in board-local coords. See keg_sensor_module.kicad_pcb.
 //

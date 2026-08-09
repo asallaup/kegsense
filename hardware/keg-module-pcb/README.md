@@ -1,8 +1,12 @@
-# Keg Sensor Module PCB
+# KegSensor — Sallaup Electronics
 
-A per-keg carrier board: hosts the HX711 breakout module, terminates the 4
-half-bridge sensor leads (bussed/paired per `../hub-wiring.md`), and exits
-to the in-keezer hub over RJ11. One board per keg.
+Part of the **Sallaup KegSense** keg-monitoring system, made by
+**Sallaup Electronics**.
+
+**KegSensor** is the per-keg carrier board: hosts the HX711 breakout
+module, terminates the 4 half-bridge sensor leads (bussed/paired per
+`../hub-wiring.md`), and exits to the in-keezer hub over RJ11. One board
+per keg.
 
 KiCad 9 project. Both schematic and PCB (footprints placed, fully routed,
 2-layer) are done and validated (see Validation below).

@@ -201,8 +201,10 @@ sch = f'''(kicad_sch
 \t(uuid "{ROOT_UUID}")
 \t(paper "A3")
 \t(title_block
-\t\t(title "Keg Sensor Module")
+\t\t(title "KegSensor")
+\t\t(company "Sallaup Electronics")
 \t\t(comment 1 "HX711 carrier + 4x half-bridge sensor terminals + RJ11 to hub")
+\t\t(comment 2 "Part of the Sallaup KegSense keg-monitoring system")
 \t)
 \t(lib_symbols
 {indent(conn3, 2)}

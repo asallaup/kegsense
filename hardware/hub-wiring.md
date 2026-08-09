@@ -1,9 +1,13 @@
-# Keg Sensor & In-Keezer Hub Wiring
+# KegSensor & In-Keezer Hub Wiring
 
-Covers the sensor layer only: per-keg load cell + HX711, the RJ11 run to the
-in-keezer hub, and the hub's RJ45 run out to the external Raspberry Pi
-central unit. The Pi/central-unit side (GPIO mapping, firmware, dashboard)
-is a separate, later phase.
+**Sallaup Electronics** — part of the **Sallaup KegSense** keg-monitoring
+system.
+
+Covers the sensor layer only: per-keg load cell + HX711 (the **KegSensor**
+module, see `keg-module-pcb/`), the RJ11 run to the in-keezer hub, and the
+hub's RJ45 run out to the external Raspberry Pi central unit. The
+Pi/central-unit side (GPIO mapping, firmware, dashboard) is a separate,
+later phase.
 
 ## System overview
 

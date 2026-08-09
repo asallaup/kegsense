@@ -4,3 +4,4 @@
 hardware/keg-module-pcb/fp-info-cache
 hardware/keg-module-pcb/~*.lck
 hardware/keg-module-pcb/keg_sensor_module-backups/
+.DS_Store
