@@ -50,11 +50,17 @@ Without it, a cable coming off the load cell would have to share the
 same ~26×26mm pocket opening as the load cell body itself.
 
 Added a 6mm-wide notch through the pocket wall on the **-Y side**
-(opposite the seam slit, so the two features stay separated), full part
-height since the load cell's actual cable exit height isn't known.
-Controlled by `cable_notch_half_w` / `cable_notch_y0` / `cable_notch_y1`
-in `load_cell_holder.scad`. See `load_cell_holder_cable_notch.png` for
-the top-down verification render (still `Simple: yes` after adding it).
+(opposite the seam slit, so the two features stay separated). Originally
+full part height, then changed to **half height, at the bottom**
+(z=0-4mm of the 8mm total) so solid material remains as a roof over the
+cable rather than opening the whole side. Controlled by
+`cable_notch_half_w` / `cable_notch_y0` / `cable_notch_y1` /
+`cable_notch_height` in `load_cell_holder.scad`. See
+`load_cell_holder_cable_notch.png` for the top-down verification render
+and `load_cell_holder_notch_sideview.png` for a Y-Z cross-section
+directly confirming the notch spans z=0-4mm on the -Y side while the
++Y (seam) side stays full height (still `Simple: yes` after each
+change).
 
 ## Validation performed
 

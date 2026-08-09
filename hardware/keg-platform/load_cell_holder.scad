@@ -51,11 +51,13 @@ seam_y1 = collar_half_h + 1;  // ... through the outer edge
 // Without this, a cable coming off the load cell would have to share
 // the same ~26x26mm pocket opening as the load cell body itself.
 // Placed on the -Y side (opposite the seam slit at +Y) so the two
-// features stay clearly separated. Spans the full part height (z) since
-// the load cell's actual cable exit height isn't known.
+// features stay clearly separated. Half the part's total height, at the
+// bottom (z=0 up), not full height - leaves solid material above it as
+// a roof over the cable exit.
 cable_notch_half_w = 3.0;  // 6mm wide - fits a small multi-conductor cable
 cable_notch_y0 = -pocket_half + 1;   // starts just inside the pocket edge
 cable_notch_y1 = -collar_half_h - 1; // ... through the outer collar edge
+cable_notch_height = (ear_thickness + lip_height) / 2;  // half of 8mm = 4mm
 
 $fn = 64;
 
@@ -111,10 +113,12 @@ module holder() {
         // split-seam flex slit, through the lip at the pocket's top edge
         translate([-seam_half_w, seam_y0, ear_thickness - 0.5])
             cube([seam_half_w * 2, seam_y1 - seam_y0, lip_height + 1]);
-        // cable exit notch (added - see comment above), full height
+        // cable exit notch (added - see comment above), half height, at
+        // the bottom (z=-1 for a clean cut through the bottom face, up
+        // to cable_notch_height above z=0)
         translate([-cable_notch_half_w, cable_notch_y1, -1])
             cube([cable_notch_half_w * 2, cable_notch_y0 - cable_notch_y1,
-                  ear_thickness + lip_height + 2]);
+                  cable_notch_height + 1]);
     }
 }
 
