@@ -12,10 +12,10 @@ much beer is left without opening the lid.
 
 ```
  Keg 1  --RJ11-->  |                |
- Keg 2  --RJ11-->  |  In-keezer hub |  --RJ45-->  KegStation
- Keg 3  --RJ11-->  |  (passive      |             (Raspberry Pi,
- Keg 4  --RJ11-->  |   wiring       |              OLED + web
- Keg 5  --RJ11-->  |   panel)       |              dashboard)
+ Keg 2  --RJ11-->  |     KegHub     |  --RJ45-->  KegStation
+ Keg 3  --RJ11-->  |   (passive     |             (Raspberry Pi,
+ Keg 4  --RJ11-->  |    wiring      |              OLED + web
+ Keg 5  --RJ11-->  |    panel)      |              dashboard)
                     |                |
 ```
 
@@ -32,21 +32,28 @@ outside the keezer, is the only part with Wi-Fi (for the dashboard).
   has been physically built, and it hasn't been ordered/printed yet.
   Treat as a working draft, not a locked design, until it's been through
   a real build.
-- 🚧 **In-keezer hub** — wiring design (RJ11/RJ45 pin conventions, parts
-  list) documented; physical build not started.
+- 🚧 **KegHub** (in-keezer passive wiring panel) — wiring design
+  (RJ11/RJ45 pin conventions, parts list) documented; physical build not
+  started.
 - 🚧 **KegStation** (central unit) — architecture decisions documented
   (platform, Wi-Fi provisioning, update mechanism, KegSensor-interfacing
   daemon language); no hardware or software built yet.
+- 🚧 **Keg platform** (load cell mounting) — one part done: a derived,
+  validated OpenSCAD load cell holder. Top/bottom mounting plates around
+  it not designed yet.
 
 ## Repo layout
 
-- [`hardware/hub-wiring.md`](hardware/hub-wiring.md) — sensor + hub
+- [`hardware/hub-wiring.md`](hardware/hub-wiring.md) — sensor + KegHub
   wiring design: RJ11/RJ45 pin conventions, parts list, bench-test
   checklist.
 - [`hardware/keg-module-pcb/`](hardware/keg-module-pcb/) — KegSensor:
   KiCad schematic/PCB project, 3D-printable case (OpenSCAD), fab-ready
   Gerbers. See its own README for details, known assumptions to verify
   against real hardware, and how to regenerate everything.
+- [`hardware/keg-platform/`](hardware/keg-platform/) — load cell holder
+  (OpenSCAD, derived from a third-party design and validated against it)
+  that each corner of a keg's platform mounts on.
 - [`kegstation/`](kegstation/) — KegStation (central unit) planning doc:
   decisions made so far and what's still open.
 

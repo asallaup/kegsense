@@ -1,29 +1,29 @@
-# KegSensor & In-Keezer Hub Wiring
+# KegSensor & KegHub Wiring
 
 **Sallaup Electronics** — part of the **Sallaup KegSense** keg-monitoring
 system.
 
 Covers the sensor layer only: per-keg load cell + HX711 (the **KegSensor**
-module, see `keg-module-pcb/`), the RJ11 run to the in-keezer hub, and the
-hub's RJ45 run out to the external Raspberry Pi central unit. The
-Pi/central-unit side (GPIO mapping, firmware, dashboard) is a separate,
-later phase.
+module, see `keg-module-pcb/`), the RJ11 run to **KegHub** (the in-keezer
+passive wiring panel), and KegHub's RJ45 run out to **KegStation** (the
+external Raspberry Pi central unit — see `../kegstation/`). KegStation's
+own hardware/software is a separate, later phase.
 
 ## System overview
 
 ```
  Keg 1  --RJ11-->  |               |
- Keg 2  --RJ11-->  |  In-keezer    |
- Keg 3  --RJ11-->  |  hub (passive |  --RJ45-->  External Raspberry Pi
- Keg 4  --RJ11-->  |  panel)       |             (central unit)
+ Keg 2  --RJ11-->  |    KegHub     |
+ Keg 3  --RJ11-->  |   (passive    |  --RJ45-->  KegStation
+ Keg 4  --RJ11-->  |    panel)     |             (Raspberry Pi)
  Keg 5  --RJ11-->  |               |
 ```
 
 - No WiFi/radio inside or on the keezer.
-- Hub is fully passive: no MCU, just bussed wiring.
+- KegHub is fully passive: no MCU, just bussed wiring.
 - 3.3V logic system-wide (Raspberry Pi GPIO is not 5V-tolerant).
 - Shared SCK across all 5 HX711 modules; each keg keeps its own DT line.
-- RJ45's 8 wires = VCC + GND + SCK(shared) + 5×DT → hard cap of 5 kegs per hub/cable.
+- RJ45's 8 wires = VCC + GND + SCK(shared) + 5×DT → hard cap of 5 kegs per KegHub/cable.
 
 ## Per-keg module
 
@@ -61,7 +61,7 @@ most do, per HX711 datasheet's 2.6–5.5V VCC range).
 blank board outline) implementing all of the above as a small per-keg
 carrier board: 4× screw terminals for the sensors (bussing E+/E- across all
 4, splitting the diagonal-paired signal leads to A+/A-), a female header
-that the HX711 breakout module plugs into, and an RJ11 jack out to the hub.
+that the HX711 breakout module plugs into, and an RJ11 jack out to KegHub.
 Schematic passes ERC clean and the netlist has been verified against this
 design. Footprint for the RJ11 jack is intentionally left unassigned —
 match it to whatever RJ11 jack part you actually buy. See
@@ -76,26 +76,26 @@ end. Before trusting the color convention, verify with a continuity tester
 that Black↔Black, Red↔Red, Green↔Green, Yellow↔Yellow end-to-end on every
 keg cable, not just Black↔Yellow-reversed.
 
-From the HX711, run a standard 4-wire flat silver-satin RJ11 cable to the
-hub, using this fixed color convention on every keg:
+From the HX711, run a standard 4-wire flat silver-satin RJ11 cable to
+KegHub, using this fixed color convention on every keg:
 
 | Wire color | Signal                                  |
 |------------|------------------------------------------|
 | Black      | GND                                      |
-| Red        | VCC (3.3V, in from hub)                 |
-| Green      | SCK (shared clock, in from hub)         |
-| Yellow     | DT (data out to hub — unique per keg)   |
+| Red        | VCC (3.3V, in from KegHub)               |
+| Green      | SCK (shared clock, in from KegHub)       |
+| Yellow     | DT (data out to KegHub — unique per keg) |
 
 Wiring every keg identically to this color convention means a keg module
-can be swapped to any hub jack without needing to relabel/recheck wiring.
+can be swapped to any KegHub jack without needing to relabel/recheck wiring.
 
-## In-keezer hub (passive panel)
+## KegHub (in-keezer passive panel)
 
 Perfboard/protoboard in a small project box, cold-rated (silicone-insulated)
 hookup wire throughout since it lives inside the keezer:
 
 - 5× RJ11 female jacks, labeled KEG1–KEG5
-- 1× RJ45 female jack, facing out to the central unit
+- 1× RJ45 female jack, facing out to KegStation
 
 Internal bussing:
 
@@ -120,9 +120,9 @@ Internal bussing:
 VCC/GND share the Blue twisted pair (keeps power together, reduces noise
 coupling into data lines). SCK is paired with DT‑Keg1 on the Orange pair.
 
-Fine for short indoor runs without shielding. If the hub-to-Pi run ends up
-long, switch to shielded Cat5e/6 (STP) and/or slow the SCK bit-bang rate in
-the eventual Pi firmware.
+Fine for short indoor runs without shielding. If the KegHub-to-KegStation
+run ends up long, switch to shielded Cat5e/6 (STP) and/or slow the SCK bit-bang rate in
+the eventual KegStation firmware.
 
 ## Parts list
 
@@ -130,19 +130,19 @@ the eventual Pi firmware.
   equivalent) — 5× HX711 + 20× half-bridge sensors total, one set per keg
   platform (verify 50kg rating covers your heaviest full keg)
 - 5× rigid top/bottom plate pairs to build each keg's sensor platform
-- 5× RJ11 female panel-mount jacks (hub side)
+- 5× RJ11 female panel-mount jacks (KegHub side)
 - 5× RJ11 4-wire flat cables with molded plugs (keg side)
-- 1× RJ45 female panel-mount jack (hub side)
-- 1× Cat5e/6 patch cable, hub to central unit
-- Perfboard/protoboard + small project box for the hub
+- 1× RJ45 female panel-mount jack (KegHub side)
+- 1× Cat5e/6 patch cable, KegHub to KegStation
+- Perfboard/protoboard + small project box for KegHub
 - Silicone-insulated (cold-rated) hookup wire for all in-keezer wiring
 
 ## Bench-test checklist (before final assembly)
 
-Do this before the hub is sealed into its enclosure or the load cells are
+Do this before KegHub is sealed into its enclosure or the load cells are
 mounted under kegs — much easier to fix a miswired jack now.
 
-1. With the hub fully wired but nothing plugged into the RJ11 jacks yet,
+1. With KegHub fully wired but nothing plugged into the RJ11 jacks yet,
    multimeter-check RJ45 pin 1 (SCK) for continuity to **all 5** jacks'
    Green pin. All 5 must read continuous; if one doesn't, that jack's SCK
    bus connection is broken.
@@ -159,5 +159,5 @@ mounted under kegs — much easier to fix a miswired jack now.
    pin, before wiring the rest.
 
 Full end-to-end electrical verification (reading actual weight values)
-happens once the central-unit (Raspberry Pi) side is built — that's the
-next phase.
+happens once KegStation (the Raspberry Pi central unit) is built — that's
+the next phase.
