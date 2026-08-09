@@ -117,6 +117,21 @@ def track(x1, y1, x2, y2, layer, net_name):
 \t\t(uuid "{new_uuid()}")
 \t)''')
 
+silk_out = []
+
+def silk_text(text, x, y, size, layer="F.SilkS"):
+    silk_out.append(f'''\t(gr_text "{text}"
+\t\t(at {x} {y} 0)
+\t\t(layer "{layer}")
+\t\t(uuid "{new_uuid()}")
+\t\t(effects
+\t\t\t(font
+\t\t\t\t(size {size} {size})
+\t\t\t\t(thickness {round(size * 0.15, 3)})
+\t\t\t)
+\t\t)
+\t)''')
+
 def via(x, y, net_name):
     vias_out.append(f'''\t(via
 \t\t(at {x} {y})
@@ -199,6 +214,15 @@ track(93, 12, 143.46, 12, "B.Cu", "VCC_3V3")
 via(143.46, 12, "VCC_3V3")
 track(143.46, 12, 143.46, 36.02, "F.Cu", "VCC_3V3")  # -> J7 pad2 (143.46,36.02)
 
+# -- silkscreen branding --
+# First attempt (30,58) at 3mm overlapped J2/J4's reference-label text -
+# the J1-J4 column's silkscreen labels extend further right than their
+# courtyards alone suggest. Moved into the gap between J2 and J4
+# specifically (y=59-71, clear of both), smaller and further from the
+# J-column (x=23 courtyard edge) to give real margin.
+silk_text("KegSensor", 26, 63, 2.2)
+silk_text("Sallaup Electronics", 26, 67, 1.2)
+
 tmpl = open(TEMPLATE_PCB).read()
 layers_block = extract_balanced(tmpl, tmpl.index("\t(layers"))
 setup_block = extract_balanced(tmpl, tmpl.index("\t(setup"))
@@ -229,6 +253,7 @@ pcb = f'''(kicad_pcb
 {chr(10).join(components_out)}
 {chr(10).join(tracks_out)}
 {chr(10).join(vias_out)}
+{chr(10).join(silk_out)}
 \t(embedded_fonts no)
 )
 '''
