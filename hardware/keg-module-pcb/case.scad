@@ -122,6 +122,22 @@ module base() {
     }
 }
 
+// Embossed (raised) branding on the lid top - more forgiving to print
+// cleanly at this size than engraved/recessed text, and readable without
+// needing to fill it with paint/marker.
+text_emboss_h = 0.6;  // ~3 layers at 0.2mm - enough to read/feel, not fragile
+
+module lid_text() {
+    translate([outer_w / 2, outer_h / 2 + 9, lid_t])
+        linear_extrude(height = text_emboss_h)
+            text("KegSensor", size = 9, halign = "center", valign = "center",
+                 font = "Liberation Sans:style=Bold");
+    translate([outer_w / 2, outer_h / 2 - 4, lid_t])
+        linear_extrude(height = text_emboss_h)
+            text("Sallaup Electronics", size = 4.5, halign = "center", valign = "center",
+                 font = "Liberation Sans");
+}
+
 module lid() {
     difference() {
         cube([outer_w, outer_h, lid_t]);
@@ -129,14 +145,7 @@ module lid() {
             translate([p[0], p[1], -0.1])
                 cylinder(d = corner_post_hole_d + 0.6, h = lid_t + 0.2); // clearance for screw head shaft
     }
-    // countersink-ish recess so screw heads sit flush
-    difference() {
-        union() {
-            for (p = corner_posts)
-                translate([p[0], p[1], lid_t])
-                    cylinder(d = 6.5, h = 0.01); // marker only, kept flat
-        }
-    }
+    lid_text();
 }
 
 if (PART == "base") {

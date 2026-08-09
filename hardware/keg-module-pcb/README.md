@@ -182,6 +182,12 @@ separate flat lid, screwed together at 4 corner posts (M3 self-tapping,
   moving J7 to the board edge (the correct fix — any case built around the
   original position would need an internal tunnel to reach a mid-board
   connector, which isn't good practice regardless of the case).
+- **Lid is branded**: "KegSensor" and "Sallaup Electronics" embossed
+  (raised 0.6mm — about 3 layers at 0.2mm, readable/printable without
+  being fragile) on the outside top, centered, clear of the 4 corner screw
+  posts — see `case_lid_text_preview.png`. Text is generated with
+  OpenSCAD's `text()` primitive directly from the strings in `case.scad`,
+  not hand-drawn, so there's no risk of a typo surviving a re-render.
 
 Regenerate with `./generate_case.sh` after editing `case.scad` (needs
 OpenSCAD: `brew install --cask openscad`; this cask fails macOS Gatekeeper,
@@ -220,3 +226,7 @@ fridge/freezer temperature and PLA gets brittle cold.
   wall cutout's coordinates before re-rendering, then re-rendered the
   updated STL and visually confirmed an actual opening lines up with the
   connector from two angles.
+- Lid text: `case_lid.stl` still reports `Simple: yes` after adding the
+  embossed text (confirms the emboss union didn't break the mesh), and a
+  close-up shaded render confirms two lines of raised text sit centered on
+  the lid, clear of the corner posts.
