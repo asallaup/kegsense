@@ -223,8 +223,11 @@ track(143.46, 12, 143.46, 36.02, "F.Cu", "VCC_3V3")  # -> J7 pad2 (143.46,36.02)
 silk_text("KegSensor", 26, 63, 2.2)
 silk_text("Sallaup Electronics", 26, 67, 1.2)
 
-# Rev/date, in the large open area right of J5/below the J6<->J7 routing
+# Branding + rev/date, also on the right (in addition to the left-side
+# copy above) - large open area right of J5/below the J6<->J7 routing
 # (that routing stays y<=52; nothing else occupies x=60-155, y=52-90).
+silk_text("KegSensor", 100, 58, 2.2)
+silk_text("Sallaup Electronics", 100, 62, 1.2)
 silk_text("Rev A", 100, 68, 2.2)
 silk_text("2026", 100, 72, 1.5)
 
