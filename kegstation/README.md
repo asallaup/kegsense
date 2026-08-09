@@ -67,8 +67,37 @@ the KegSensor module).
     not support the Raspberry Pi 5's GPIO chip (RP1); if a Pi 5 is in play,
     `lgpio` (pigpio's suggested successor) or direct `libgpiod` should be
     used instead. Decide this once the Pi model (below) is locked in.
+- **Tare/weight calibration: CLI-first.** A small companion program
+  (`kegcal`) run on the Pi itself (SSH or a plugged-in keyboard), not a
+  dashboard UI — the dashboard doesn't exist yet, and whenever it does it
+  can shell out to the same commands rather than needing its own
+  calibration logic.
+  - `kegcal tare <keg>` — reads that keg's *current* raw ADC value (from
+    the daemon's readings file) and stores it as the tare reference.
+  - `kegcal setfull <keg> <grams>` — same, but stores it as the "full"
+    reference point at a known weight in grams. That known weight can be
+    either the actual full keg's spec weight (so the reference doubles as
+    the "how much is left" baseline) or a separate known calibration
+    mass — the tool works the same either way, this only affects what
+    number you type in.
+  - Calibration values live in a separate config file (e.g.
+    `calibration.json`), which the daemon just re-reads on its normal
+    cycle — no signaling/IPC needed for `kegcal` to take effect.
+  - The daemon's readings file includes both the raw ADC count and the
+    calibrated weight (once calibration exists) per keg, since `kegcal`
+    needs to read the live raw value to know what to record.
+  - **Not yet built** — see below.
 
 ## Still open
+
+- **All of the above C daemon / `kegcal` work is design-only, not yet
+  implemented.** Deliberately holding off writing the code until a
+  physical Raspberry Pi + HX711 setup exists to test against, rather than
+  writing GPIO-bit-banging code that can only be verified once real
+  hardware shows up — the risk of subtle timing/wiring bugs surviving
+  unnoticed in untestable code isn't worth it here (same reasoning as
+  everything else in this project: validate against something real
+  before calling it done, not just "it compiles").
 
 - Software language/stack for everything *other* than the KegSensor
   interfacing daemon (Python is the natural fit for the Pi's OLED/web
