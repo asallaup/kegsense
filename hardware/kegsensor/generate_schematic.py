@@ -1,7 +1,7 @@
 import re, uuid, pathlib
 
 LIB_PATH = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/Connector_Generic.kicad_sym"
-OUT_DIR = pathlib.Path("/Users/arvid/projects/beeer-weight-proto/hardware/kegsensor")
+OUT_DIR = pathlib.Path(__file__).resolve().parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 PROJECT_NAME = "keg_sensor_module"
 SCH_PATH = OUT_DIR / f"{PROJECT_NAME}.kicad_sch"
