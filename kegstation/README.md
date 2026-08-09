@@ -47,15 +47,40 @@ the KegSensor module).
     action that runs the pull + restart on demand) — not automatic on a
     schedule, so an update never lands unannounced (e.g. mid-party), and
     not SSH-only, so it doesn't require terminal access for routine use.
+- **KegSensor-interfacing layer: C.** The HX711 protocol needs precise
+  clock-pulse timing to bit-bang correctly (shared SCK + 5× DT, per
+  `hardware/hub-wiring.md`) — C gives predictable low-level GPIO control
+  that's harder to guarantee in a higher-level language. This is scoped
+  specifically to the hardware-interfacing piece, not necessarily the
+  rest of KegStation's software (dashboard, etc. — still open, below).
+  - **Interface to the rest of the system**: a small daemon, written in
+    C, that reads all 5 kegs on a fixed interval and writes current
+    readings to a local JSON/text file. Whatever ends up driving the
+    OLED and web dashboard just reads that file — simplest possible
+    hand-off, easy to debug by hand (`cat` the file), no IPC to build or
+    maintain. Chosen over a Unix socket/local IPC (more real-time, more
+    moving parts) and over having the C program also drive the OLED/
+    dashboard directly (would remove the option to pick a different,
+    easier language for that higher-level part later).
+  - **GPIO library**: not yet chosen, but worth flagging now — `pigpio`
+    (the traditional choice for precise bit-banged timing on a Pi) does
+    not support the Raspberry Pi 5's GPIO chip (RP1); if a Pi 5 is in play,
+    `lgpio` (pigpio's suggested successor) or direct `libgpiod` should be
+    used instead. Decide this once the Pi model (below) is locked in.
 
 ## Still open
 
-- Software language/stack (Python is the natural fit for Pi
-  GPIO/OLED/web-dashboard library support, but not yet committed to).
+- Software language/stack for everything *other* than the KegSensor
+  interfacing daemon (Python is the natural fit for the Pi's OLED/web
+  library support, but not yet committed to) — the daemon just needs to
+  read a file, so it can be written in anything.
+- Which Pi model specifically (4 / 5 / Zero 2 W) — affects the GPIO
+  library choice for the C daemon (see above).
 - Whether to build a small interface PCB (breaking out the hub's RJ45
   connection + OLED header to the Pi's GPIO header) or wire it directly
   on a protoboard/HAT.
 - OLED model/size, web dashboard framework, exact GPIO pin mapping for
-  the shared-SCK + 5×DT scheme.
+  the shared-SCK + 5×DT scheme, and the on-disk format/path for the
+  readings file the C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
   case already built).
