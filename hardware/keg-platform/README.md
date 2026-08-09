@@ -40,6 +40,22 @@ positions/sizes, pocket opening, general thickness) — not a
 byte-identical mesh clone. Fine fillet/rounding details are approximated
 with simpler geometry.
 
+### Added: cable exit notch (not in the original)
+
+Checked directly, not assumed: the original design has **no cable exit**
+— the pocket is fully enclosed on all 4 sides, and the flex-seam slit
+does not reach the pocket opening (confirmed via the same 2D
+cross-section / top-down projection methods, at multiple heights).
+Without it, a cable coming off the load cell would have to share the
+same ~26×26mm pocket opening as the load cell body itself.
+
+Added a 6mm-wide notch through the pocket wall on the **-Y side**
+(opposite the seam slit, so the two features stay separated), full part
+height since the load cell's actual cable exit height isn't known.
+Controlled by `cable_notch_half_w` / `cable_notch_y0` / `cable_notch_y1`
+in `load_cell_holder.scad`. See `load_cell_holder_cable_notch.png` for
+the top-down verification render (still `Simple: yes` after adding it).
+
 ## Validation performed
 
 - `openscad` reports the generated STL as `Simple: yes` (valid, manifold,

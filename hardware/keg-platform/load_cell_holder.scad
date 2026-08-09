@@ -43,6 +43,20 @@ seam_half_w = 2.92;        // split-seam slit half-width - measured
 seam_y0 = 19.1;            // seam starts at this y (measured) ...
 seam_y1 = collar_half_h + 1;  // ... through the outer edge
 
+// ---- added feature: cable exit notch (not present in the original) --
+// The original design has NO cable exit - confirmed directly (2D
+// cross-section + top-down height projection), not assumed: the pocket
+// is fully enclosed on all 4 sides, and the flex-seam slit above does
+// not reach the pocket opening (there's solid material between them).
+// Without this, a cable coming off the load cell would have to share
+// the same ~26x26mm pocket opening as the load cell body itself.
+// Placed on the -Y side (opposite the seam slit at +Y) so the two
+// features stay clearly separated. Spans the full part height (z) since
+// the load cell's actual cable exit height isn't known.
+cable_notch_half_w = 3.0;  // 6mm wide - fits a small multi-conductor cable
+cable_notch_y0 = -pocket_half + 1;   // starts just inside the pocket edge
+cable_notch_y1 = -collar_half_h - 1; // ... through the outer collar edge
+
 $fn = 64;
 
 module rounded_rect(w, h, r) {
@@ -97,6 +111,10 @@ module holder() {
         // split-seam flex slit, through the lip at the pocket's top edge
         translate([-seam_half_w, seam_y0, ear_thickness - 0.5])
             cube([seam_half_w * 2, seam_y1 - seam_y0, lip_height + 1]);
+        // cable exit notch (added - see comment above), full height
+        translate([-cable_notch_half_w, cable_notch_y1, -1])
+            cube([cable_notch_half_w * 2, cable_notch_y0 - cable_notch_y1,
+                  ear_thickness + lip_height + 2]);
     }
 }
 
