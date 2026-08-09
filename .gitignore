@@ -1,0 +1,6 @@
+.claude/settings.local.json
+
+# KiCad transient/cache files
+hardware/keg-module-pcb/fp-info-cache
+hardware/keg-module-pcb/~*.lck
+hardware/keg-module-pcb/keg_sensor_module-backups/

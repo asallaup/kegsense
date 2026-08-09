@@ -1,0 +1,160 @@
+# Keg Sensor Module PCB
+
+A per-keg carrier board: hosts the HX711 breakout module, terminates the 4
+half-bridge sensor leads (bussed/paired per `../hub-wiring.md`), and exits
+to the in-keezer hub over RJ11. One board per keg.
+
+KiCad 9 project. Both schematic and PCB (footprints placed, fully routed,
+2-layer) are done and validated (see Validation below).
+
+## Files
+
+- `keg_sensor_module.kicad_pro` — project file, open this in KiCad
+- `keg_sensor_module.kicad_sch` — schematic (see `keg_sensor_module.pdf` for
+  a quick look without opening KiCad)
+- `keg_sensor_module.kicad_pcb` — routed board, 155×90mm outline, 4× M3
+  clearance mounting holes at the corners (6,6)/(150,6)/(6,84)/(150,84)
+  board-local (see `keg_sensor_module_top.png` / `_bottom.png` for a quick
+  look, or `keg_sensor_module_3d.png` for an isometric render with real
+  component shapes)
+- `case.scad`, `case_base.stl`, `case_lid.stl` — 3D-printable enclosure,
+  see Case below
+- `generate_schematic.py` / `generate_pcb.py` — the scripts that generated
+  the two files above. If a pin-order assumption turns out wrong once you
+  have the real hardware in hand (see Known assumptions below), fix it in
+  the script and rerun rather than hand-editing the `.kicad_sch`/`.kicad_pcb`
+  text. Requires `pip install sexpdata` and a local KiCad 9 install (the
+  scripts read symbol/footprint definitions straight out of
+  `/Applications/KiCad/KiCad.app/Contents/SharedSupport/`).
+  **If you have this project open in KiCad while regenerating, close and
+  reopen the PCB editor afterward** — the scripts overwrite the file on
+  disk directly, which KiCad won't pick up in an already-open editor.
+
+## Connectors
+
+| Ref | Part | Pins |
+|-----|------|------|
+| J1 | Screw terminal, sensor "FL" corner | 1=E+ 2=E- 3=Signal |
+| J2 | Screw terminal, sensor "FR" corner | 1=E+ 2=E- 3=Signal |
+| J3 | Screw terminal, sensor "BR" corner | 1=E+ 2=E- 3=Signal |
+| J4 | Screw terminal, sensor "BL" corner | 1=E+ 2=E- 3=Signal |
+| J5 | Female header, HX711 load-cell side | 1=E+ 2=E- 3=A+ 4=A- |
+| J6 | Female header, HX711 digital/power side | 1=GND 2=DT 3=SCK 4=VCC |
+| J7 | RJ11 jack to hub (RJ14 6P4C) | 1=GND 2=VCC 3=SCK 4=DT |
+
+Nets: `EXC_POS`/`EXC_NEG` bus J1–J4 pin1/pin2 into J5; `SIG_POS` ties
+J1+J3's signal leads (diagonal) into J5.A+, `SIG_NEG` ties J2+J4's into
+J5.A-; J6↔J7 pass GND/DT/SCK/VCC straight through to the hub cable.
+
+## Known assumptions to confirm against real hardware
+
+- **J6 pin order (GND,DT,SCK,VCC)** is a common layout for these HX711
+  breakouts but varies by manufacturer — check your module's silkscreen
+  before soldering the header, fix in `generate_schematic.py` if different.
+- **Diagonal pairing (J1+J3→SIG_POS, J2+J4→SIG_NEG)** depends on which
+  corner each sensor physically sits at and its mounting orientation —
+  follow the kit's included wiring diagram; if the reading comes out
+  inverted or dead-flat, swap the SIG_POS/SIG_NEG pairing.
+- **J7 uses KiCad's stock RJ14 (Connfly DS1133-S4) footprint** — a genuine
+  6P4C connector (6-position body, 4 contacts), which is mechanically what
+  "RJ11" means in practice for a 4-wire line cord (RJ9, used in an earlier
+  draft of this board, is a different 4P4C body meant for phone handset
+  cords, not line cords — swapped out after review). Still worth checking
+  the exact part you buy against this footprint's dimensions before
+  ordering the board, since real-world RJ11 jacks vary in body/pin
+  spacing between manufacturers.
+
+## Physical layout
+
+Sensor terminals (J1–J4) are placed FL/BR/FR/BL top-to-bottom (not source
+order) so the diagonal pairs (SIG_POS = J1+J3, SIG_NEG = J2+J4) sit next to
+each other. J5 (HX711 load-cell side) sits close by on the same side —
+these are the noise-sensitive analog connections, kept short and away from
+the digital/power section. J6 (HX711 digital side) and J7 (RJ11 to hub)
+are grouped on the far side of the board.
+
+Routing uses both copper layers: the analog bus (EXC_POS/EXC_NEG spanning
+all 4 sensors, plus the SIG_POS/SIG_NEG diagonal pairs) runs on F.Cu with
+short B.Cu jogs into J5. The J6↔J7 digital/power nets were the fiddliest
+part of this board — RJ14's 4 pads are packed into roughly 3×2.5mm, so
+GND/SCK/DT/VCC needed carefully routed detours (one via, for SCK) to avoid
+grazing each other's pads at that pitch; see the comments in
+`generate_pcb.py` for the reasoning behind each one if you need to adjust
+it once you swap in your actual RJ11 part's footprint.
+
+## Next steps
+
+1. Confirm the two assumptions above against your actual HX711 modules and
+   kit wiring diagram; adjust and rerun `generate_schematic.py` (and
+   `generate_pcb.py`, since its net assignments mirror the schematic's) if
+   either turns out different.
+2. Once you've bought the actual RJ11 jack, double-check its footprint
+   against RJ14 (Connfly DS1133-S4) — if the pad spacing/count differs,
+   swap it in `generate_pcb.py` and re-route just that connector's traces.
+3. Add a ground pour on the analog section if you want extra noise
+   margin (not done here — the board routes clean without one, but it's a
+   cheap improvement for a load-cell signal).
+4. Order 5 (one per keg).
+
+## Case
+
+`case.scad` is a parametric OpenSCAD design: an open-top base plus a
+separate flat lid, screwed together at 4 corner posts (M3 self-tapping,
+2.5mm pilot holes) — see `case_base_preview.png` / `case_base_preview_2.png`
+/ `case_lid_preview.png` for renders.
+
+- Sized around the board's actual footprint (155×90×1.6mm) with a 3mm gap
+  to the inner walls and 2mm walls, so it should print fine on a standard
+  FDM printer with no supports needed (lid is flat, base has no overhangs
+  beyond straight vertical walls).
+- The board sits on 4 short standoff posts (5mm, at the PCB's own mounting
+  holes) held down by M3 screws from above; the lid attaches separately at
+  the box's 4 corners, also M3.
+- Component clearance above the board is a flat 15mm assumption (covers
+  the tallest part here, the RJ14 jack, with margin) — I don't have exact
+  height dimensions for any of these parts from datasheets, so treat this
+  as a reasonable guess, not a verified fit. If a first print is too
+  cramped, bump `component_clear` in `case.scad` and reprint just the base.
+- **Left wall has an open cutout** spanning the J1–J4 sensor terminal row,
+  for the 4 sensor cables to exit.
+- **Top-right corner is left open** rather than a precise RJ11 cutout — I
+  could not confirm from the footprint/3D model which direction the RJ14
+  jack's cable actually exits (the courtyard geometry suggests it's the
+  local -Y direction, i.e. toward the board's top edge, but this wasn't
+  visually confirmed with a rendered 3D component body). A generous corner
+  opening covers either direction; narrow it to a tighter, better-fitting
+  cutout once the physical connector is in hand and you can see which way
+  it points.
+
+Regenerate with `./generate_case.sh` after editing `case.scad` (needs
+OpenSCAD: `brew install --cask openscad`; this cask fails macOS Gatekeeper,
+so also run `xattr -dr com.apple.quarantine "/Applications/OpenSCAD-2021.01.app"`
+once after installing). Print at 0.2mm layers, 3+ perimeters, 20%+ infill;
+PETG or ABS recommended over PLA since this lives inside a keezer at
+fridge/freezer temperature and PLA gets brittle cold.
+
+## Validation performed
+
+- `kicad-cli sch erc` → 0 errors, 0 warnings
+- `kicad-cli sch export netlist` → all 8 nets manually checked against the
+  intended design (see table above)
+- `kicad-cli sch export pdf` → visually reviewed, no overlapping labels or
+  stray connections
+- `kicad-cli pcb drc` on the fully routed board → 0 violations, 0
+  unconnected pads (iterated repeatedly: the first full layout pass found
+  17 real clearance/short issues from too-tight spacing; switching J7 from
+  the RJ9 to the RJ14 footprint reset the J6↔J7 routing and took several
+  more DRC-guided rounds to clear, since RJ14's pads are much more tightly
+  packed)
+- `kicad-cli pcb render` → top and bottom copper renders visually reviewed
+  for sane, non-overlapping routing
+- Case: OpenSCAD's CGAL export reports both `case_base.stl` and
+  `case_lid.stl` as `Simple: yes` (valid, manifold, watertight solids —
+  the check that predicts whether a slicer will handle a model cleanly).
+  OpenSCAD's own GUI preview render didn't work headlessly in this
+  environment (Gatekeeper/OpenGL context issue), so I rendered the actual
+  exported STLs with a separate tool (matplotlib) from multiple angles
+  and reviewed them for the checks that matter here: box walls intact
+  where expected, both cutouts present at plausible positions, and the
+  two post types (corner lid-posts vs. PCB standoffs) landing at distinct,
+  non-colliding locations.
