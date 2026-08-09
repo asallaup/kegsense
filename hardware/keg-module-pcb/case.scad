@@ -66,13 +66,14 @@ left_cut_y1 = board_y0 + 82;
 left_cut_z0 = floor_t + 2;
 left_cut_z1 = floor_t + wall_ht - 2;
 
-// J7 (RJ11 jack) sits near the board's top-right corner; exact cable-exit
-// direction wasn't confirmed against the physical part (see README), so
-// the top wall is left open across that whole corner instead of a single
-// precise cutout - easy to reprint narrower once the real connector is in
-// hand and its orientation is confirmed.
-rj_cut_x0 = board_x0 + 122;
-rj_cut_x1 = outer_w - wall + 1;   // through the corner
+// J7 (RJ11 jack, RJ14 footprint) sits flush with the board's right edge,
+// rotated so its cable/plug face points +X - courtyard spans board-local
+// y=28.8-44.26 (see generate_pcb.py). Cut the RIGHT wall over that span
+// (with margin), not the top wall - J7 was originally positioned mid-board
+// with a top-wall cutout that didn't align with it at all; both the PCB
+// position and this cutout were fixed together (see git history).
+rj_cut_y0 = board_y0 + 26;
+rj_cut_y1 = board_y0 + 47;
 rj_cut_z0 = floor_t + 2;
 rj_cut_z1 = floor_t + wall_ht - 2;
 
@@ -115,9 +116,9 @@ module base() {
         // left-wall wire cutout
         translate([-1, left_cut_y0, left_cut_z0])
             cube([wall + 2, left_cut_y1 - left_cut_y0, left_cut_z1 - left_cut_z0]);
-        // top-right corner cutout for J7 / RJ11 cable
-        translate([rj_cut_x0, -1, rj_cut_z0])
-            cube([rj_cut_x1 - rj_cut_x0, wall + 2, rj_cut_z1 - rj_cut_z0]);
+        // right-wall cutout for J7 / RJ11 cable
+        translate([outer_w - wall - 1, rj_cut_y0, rj_cut_z0])
+            cube([wall + 2, rj_cut_y1 - rj_cut_y0, rj_cut_z1 - rj_cut_z0]);
     }
 }
 

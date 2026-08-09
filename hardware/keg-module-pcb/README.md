@@ -70,17 +70,31 @@ Sensor terminals (J1–J4) are placed FL/BR/FR/BL top-to-bottom (not source
 order) so the diagonal pairs (SIG_POS = J1+J3, SIG_NEG = J2+J4) sit next to
 each other. J5 (HX711 load-cell side) sits close by on the same side —
 these are the noise-sensitive analog connections, kept short and away from
-the digital/power section. J6 (HX711 digital side) and J7 (RJ11 to hub)
-are grouped on the far side of the board.
+the digital/power section. J6 (HX711 digital side) sits with J5; J7 (RJ11
+to hub) is rotated -90° and placed flush with the board's right edge
+(x=155) — it was originally placed mid-board with no edge access at all
+(a case built around that position would have made the connector
+unreachable from outside — caught and fixed; see git history), and any
+edge-mounted connector belongs at the board edge as a matter of course,
+independent of the case.
 
 Routing uses both copper layers: the analog bus (EXC_POS/EXC_NEG spanning
 all 4 sensors, plus the SIG_POS/SIG_NEG diagonal pairs) runs on F.Cu with
 short B.Cu jogs into J5. The J6↔J7 digital/power nets were the fiddliest
 part of this board — RJ14's 4 pads are packed into roughly 3×2.5mm, so
-GND/SCK/DT/VCC needed carefully routed detours (one via, for SCK) to avoid
-grazing each other's pads at that pitch; see the comments in
-`generate_pcb.py` for the reasoning behind each one if you need to adjust
-it once you swap in your actual RJ11 part's footprint.
+GND/SCK/DT/VCC needed carefully routed detours (a couple of vias) to avoid
+grazing each other's pads at that pitch, made harder by J7 sitting right at
+the board edge; see the comments in `generate_pcb.py` for the reasoning
+behind each one if you need to adjust it once you swap in your actual RJ11
+part's footprint.
+
+**Note on KiCad footprint rotation**: got this wrong once already — KiCad's
+`(at x y angle)` rotation is the opposite sign of the standard math
+convention (confirmed empirically by checking DRC's reported pad
+coordinates against a hand-rotated prediction, the same way the schematic's
+Y-axis quirk was caught earlier). J7 uses `angle=-90` to point its cable
+face toward +X; don't assume `+90` does that without checking actual
+reported pad positions first.
 
 ## Next steps
 
@@ -117,14 +131,15 @@ separate flat lid, screwed together at 4 corner posts (M3 self-tapping,
   cramped, bump `component_clear` in `case.scad` and reprint just the base.
 - **Left wall has an open cutout** spanning the J1–J4 sensor terminal row,
   for the 4 sensor cables to exit.
-- **Top-right corner is left open** rather than a precise RJ11 cutout — I
-  could not confirm from the footprint/3D model which direction the RJ14
-  jack's cable actually exits (the courtyard geometry suggests it's the
-  local -Y direction, i.e. toward the board's top edge, but this wasn't
-  visually confirmed with a rendered 3D component body). A generous corner
-  opening covers either direction; narrow it to a tighter, better-fitting
-  cutout once the physical connector is in hand and you can see which way
-  it points.
+- **Right wall has a cutout matching J7's position** (board-local y=26-47,
+  the right wall since J7 sits flush with the board edge there — see
+  Physical layout above). Earlier drafts had J7 positioned mid-board with
+  a *top*-wall cutout nowhere near it — caught by directly computing J7's
+  courtyard position against the case's wall coordinates rather than
+  assuming the cutout I'd already built was in the right place. Fixed by
+  moving J7 to the board edge (the correct fix — any case built around the
+  original position would need an internal tunnel to reach a mid-board
+  connector, which isn't good practice regardless of the case).
 
 Regenerate with `./generate_case.sh` after editing `case.scad` (needs
 OpenSCAD: `brew install --cask openscad`; this cask fails macOS Gatekeeper,
@@ -158,3 +173,8 @@ fridge/freezer temperature and PLA gets brittle cold.
   where expected, both cutouts present at plausible positions, and the
   two post types (corner lid-posts vs. PCB standoffs) landing at distinct,
   non-colliding locations.
+- J7-reachability fix: computed J7's courtyard bounding box in case-outer
+  coordinates directly (not eyeballed) and checked it against the right
+  wall cutout's coordinates before re-rendering, then re-rendered the
+  updated STL and visually confirmed an actual opening lines up with the
+  connector from two angles.

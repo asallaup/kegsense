@@ -87,8 +87,21 @@ add_component(FP_PINSOCKET4, "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_
 add_component(FP_PINSOCKET4, "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical", "J6", 95, 35, 0,
               {"1": "GND", "2": "DT", "3": "SCK", "4": "VCC_3V3"})
 
-# J7: RJ11-to-hub jack (RJ14 6P4C - genuine RJ11-style body/contact count)
-add_component(FP_RJ11, "Connector_RJ:RJ14_Connfly_DS1133-S4_Horizontal", "J7", 135, 33, 0,
+# J7: RJ11-to-hub jack (RJ14 6P4C). Rotated -90deg and moved flush with the
+# board's right edge (x=155) so the cable is actually reachable from
+# outside the case - it was previously stranded ~14-27mm from the nearest
+# wall (see git history / README). Courtyard's -Y side is the cable/plug
+# face (mounting bosses + pads sit near the PCB-facing back at local
+# y=-2.3..2.54, the shell extends out to y=-9).
+#
+# KiCad's footprint rotation is the *opposite* sign of the standard math
+# convention (confirmed empirically: angle=+90 put pad2 at (148.54,33.98)
+# and pointed the cable face -X/left, i.e. into the board - the reverse of
+# both what the formula below predicts and what's wanted). angle=-90 is
+# the one that both matches these pad targets and points the cable face
+# +X/right, out through the board edge - verified via kicad-cli DRC
+# reporting actual pad coordinates, not assumed.
+add_component(FP_RJ11, "Connector_RJ:RJ14_Connfly_DS1133-S4_Horizontal", "J7", 146, 35, -90,
               {"1": "GND", "2": "VCC_3V3", "3": "SCK", "4": "DT"})
 
 tracks_out = []
@@ -134,51 +147,57 @@ track(20.16, 55, 20.16, 75, "F.Cu", "SIG_NEG")    # J2+J4 only
 via(20.16, 60, "SIG_NEG")
 track(20.16, 60, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
 
-# -- J6 <-> J7 (J7 = RJ14, pad1=GND(135,33) pad2=VCC(136.02,35.54)
-# pad3=SCK(137.04,33) pad4=DT(138.06,35.54)) --
-# GND, SCK: simple L-shapes (own source-y horizontal, then vertical into
-# pad) - source-y order matches target-x order for this pair, so they
-# don't cross; also clear of J7's NPTH mounting holes at (130.53,30.7)
-# and (142.53,30.7).
-track(95, 35, 135, 35, "F.Cu", "GND")
-track(135, 35, 135, 33, "F.Cu", "GND")             # -> J7 pad1 (135,33)
-
-# SCK's straight final approach clips VCC's pad (only 1.02mm clearance at
-# RJ14's tight pitch) - given J7's 4 pads are packed within ~3x2.5mm, the
-# reliable fix is a via for just the final approach, landing on the
-# otherwise-empty B.Cu layer where it can go direct with no neighbors to
-# graze.
-# A direct B.Cu diagonal into the pad still grazes GND's or VCC's pad
-# (they're only ~1-2mm away at this pitch) no matter the angle - approach
-# straight down from above instead (x locked to the target's own x, well
-# above the y=33-40.08 pad band and above the mounting holes at y=30.7),
-# so the final segment isn't diagonal-close to any neighboring pad.
-track(95, 40.08, 110, 40.08, "F.Cu", "SCK")
-via(110, 40.08, "SCK")
-track(110, 40.08, 110, 25, "B.Cu", "SCK")
-track(110, 25, 137.04, 25, "B.Cu", "SCK")
-track(137.04, 25, 137.04, 33, "B.Cu", "SCK")       # -> J7 pad3 (137.04,33)
-
-# DT and VCC both target y=35.54, right where GND/SCK's F.Cu horizontals
-# and verticals live - rather than a via, route both around that band
-# entirely, staying on F.Cu throughout.
+# -- J6 <-> J7 (J7 now at (146,35) rotated 90deg - see J7 comment above)
+# Pads: pad1=GND(146,35) pad2=VCC(143.46,36.02) pad3=SCK(146,37.04)
+# pad4=DT(143.46,38.06). NPTH mounting holes at (148.3,30.53) and
+# (148.3,42.53).
 #
-# DT's vertical jog is kept tiny (37.54->37, just 0.54mm) so it doesn't
-# block VCC's escape at y=42.62 further down; the long horizontal run is
-# at y=37, comfortably clear of GND (y=35) and SCK (y=40.08) pads/traces.
-track(95, 37.54, 91, 37.54, "F.Cu", "DT")
-track(91, 37.54, 91, 37, "F.Cu", "DT")
-track(91, 37, 138.06, 37, "F.Cu", "DT")
-track(138.06, 37, 138.06, 35.54, "F.Cu", "DT")     # -> J7 pad4 (138.06,35.54)
+# All 4 nets get a short F.Cu stub near J6 (own source y, distinct x so
+# the stubs don't cross each other) then a via onto B.Cu, which is
+# otherwise completely empty over here - so the only remaining constraint
+# is staying clear of J7's own tightly-packed pads/holes, not other
+# traces. GND/SCK (sharing target x=146) approach from the upper-right,
+# outside the board edge, then a short final horizontal into the pad from
+# the right - clean because that direction has no other pads in the way.
+# DT/VCC (sharing target x=143.46) approach as a vertical from below/above
+# respectively, since their target-y order (VCC=36.02 < DT=38.06) keeps
+# those two vertical spans non-overlapping.
+# GND and SCK share target x=146 (2.04mm apart in y) - approach one from
+# above, the other from below, so their final verticals (both at x=146)
+# occupy non-overlapping y-ranges and can share that x safely. Both stay
+# >=2.3mm from J7's NPTH holes at (148.3,30.53)/(148.3,42.53) - tight but
+# clear (need 1.875mm).
+track(95, 35, 97, 35, "F.Cu", "GND")
+via(97, 35, "GND")
+track(97, 35, 97, 20, "B.Cu", "GND")
+track(97, 20, 146, 20, "B.Cu", "GND")
+track(146, 20, 146, 35, "B.Cu", "GND")             # -> J7 pad1 (146,35), from above
 
-# VCC escapes to x=89 entirely at its own y=42.62 (clear of DT's now-tiny
-# vertical and of DT's y=37 horizontal, both far from 42.62), then drops
-# to the y=36.3 crossing height at x=89 - safely left of DT's horizontal,
-# which only starts at x=91.
-track(95, 42.62, 89, 42.62, "F.Cu", "VCC_3V3")
-track(89, 42.62, 89, 36.3, "F.Cu", "VCC_3V3")
-track(89, 36.3, 136.02, 36.3, "F.Cu", "VCC_3V3")
-track(136.02, 36.3, 136.02, 35.54, "F.Cu", "VCC_3V3")  # -> J7 pad2 (136.02,35.54)
+# lane y=52, not 45 - DT's escape/approach verticals occupy y=37.54-50 at
+# x=101/143.46, both within this horizontal's x-span, so 45 crossed them.
+track(95, 40.08, 99, 40.08, "F.Cu", "SCK")
+via(99, 40.08, "SCK")
+track(99, 40.08, 99, 52, "B.Cu", "SCK")
+track(99, 52, 146, 52, "B.Cu", "SCK")
+track(146, 52, 146, 37.04, "B.Cu", "SCK")          # -> J7 pad3 (146,37.04), from below
+
+track(95, 37.54, 101, 37.54, "F.Cu", "DT")
+via(101, 37.54, "DT")
+track(101, 37.54, 101, 50, "B.Cu", "DT")
+track(101, 50, 143.46, 50, "B.Cu", "DT")
+track(143.46, 50, 143.46, 38.06, "B.Cu", "DT")     # -> J7 pad4 (143.46,38.06)
+
+# VCC stubs LEFT (x=93, not right) so its long vertical doesn't sit inside
+# GND's/SCK's lead-in horizontals' x-range (97-146) - avoids crossing them.
+track(95, 42.62, 93, 42.62, "F.Cu", "VCC_3V3")
+via(93, 42.62, "VCC_3V3")
+track(93, 42.62, 93, 12, "B.Cu", "VCC_3V3")
+track(93, 12, 143.46, 12, "B.Cu", "VCC_3V3")
+# GND's lead-in horizontal is at y=20, clear of this y=12 run; the final
+# vertical below still needs F.Cu though, since it crosses GND's y=20 and
+# SCK's y=45 horizontals otherwise (both span across x=143.46).
+via(143.46, 12, "VCC_3V3")
+track(143.46, 12, 143.46, 36.02, "F.Cu", "VCC_3V3")  # -> J7 pad2 (143.46,36.02)
 
 tmpl = open(TEMPLATE_PCB).read()
 layers_block = extract_balanced(tmpl, tmpl.index("\t(layers"))
@@ -198,7 +217,7 @@ pcb = f'''(kicad_pcb
 {net_block()}
 \t(gr_rect
 \t\t(start 0 0)
-\t\t(end 145 90)
+\t\t(end 155 90)
 \t\t(stroke
 \t\t\t(width 0.15)
 \t\t\t(type solid)
