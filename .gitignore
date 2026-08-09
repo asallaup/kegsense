@@ -1,12 +1,13 @@
 .claude/settings.local.json
 
 # KiCad transient/cache files
-hardware/keg-module-pcb/fp-info-cache
-hardware/keg-module-pcb/~*.lck
-hardware/keg-module-pcb/keg_sensor_module-backups/
+hardware/kegsensor/fp-info-cache
+hardware/kegsensor/~*.lck
+hardware/kegsensor/keg_sensor_module-backups/
 .DS_Store
 
 # Third-party reference file (Printables, unknown license) - not ours to
 # redistribute. Download from the source link in
-# hardware/keg-platform/README.md if you need it for local validation.
-hardware/keg-platform/load_cell_holder_reference.stl
+# hardware/kegsensor/load-cell-platform/README.md if you need it for
+# local validation.
+hardware/kegsensor/load-cell-platform/load_cell_holder_reference.stl

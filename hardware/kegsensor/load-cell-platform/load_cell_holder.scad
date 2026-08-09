@@ -11,7 +11,7 @@
 // this project's parts are built (case.scad, generate_pcb.py). It is
 // NOT a byte-identical mesh clone - fine fillet/lip details are
 // approximated. Validate print fit against the original STL
-// (keg-platform/load_cell_holder_reference.stl) before relying on this
+// (load-cell-platform/load_cell_holder_reference.stl) before relying on this
 // for a real build.
 //
 // Snap-fit bracket: two outer ears bolt down to a base plate: the load

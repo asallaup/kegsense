@@ -7,7 +7,7 @@ https://www.printables.com/model/157473-load-cell-holder
 It holds one of the KegSensor half-bridge load cells at one end (snap-fit
 into the central pocket) while the other two holes bolt the holder down
 to a base plate. Four of these, one per corner, is the mounting scheme
-for a keg platform — see `../hub-wiring.md` for the sensor wiring side of
+for a keg platform — see `../wiring.md` for the sensor wiring side of
 that (not built yet; this holder is the first piece of the mechanical
 platform, done in isolation per current scope).
 

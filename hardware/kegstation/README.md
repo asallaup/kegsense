@@ -10,15 +10,16 @@ information remotely.
 
 This is a planning doc — no hardware or software has been built yet.
 Captures decisions made so far so they aren't lost before implementation
-starts (see `hardware/hub-wiring.md` for the equivalent doc that preceded
-the KegSensor module).
+starts (see `hardware/kegsensor/wiring.md` and `hardware/keghub/README.md`
+for the equivalent docs that preceded the KegSensor module).
 
 ## Decisions so far
 
 - **Platform**: Raspberry Pi 4, 5, or Zero 2 W — any of these have
   built-in Wi-Fi + Bluetooth, so no wireless add-on hardware is needed.
 - **Connectivity**: reads the 5× KegSensor modules over the wired hub
-  connection (shared SCK + 5× DT + power, see `hardware/hub-wiring.md`) —
+  connection (shared SCK + 5× DT + power, see
+  `hardware/kegsensor/wiring.md` and `hardware/keghub/README.md`) —
   direct to the Pi's GPIO header, 3.3V logic throughout, no level
   shifters needed. No Wi-Fi/radio inside the keezer itself (unchanged
   from the original hub design constraint) — KegStation sits outside the
@@ -49,7 +50,7 @@ the KegSensor module).
     not SSH-only, so it doesn't require terminal access for routine use.
 - **KegSensor-interfacing layer: C.** The HX711 protocol needs precise
   clock-pulse timing to bit-bang correctly (shared SCK + 5× DT, per
-  `hardware/hub-wiring.md`) — C gives predictable low-level GPIO control
+  `hardware/kegsensor/wiring.md`) — C gives predictable low-level GPIO control
   that's harder to guarantee in a higher-level language. This is scoped
   specifically to the hardware-interfacing piece, not necessarily the
   rest of KegStation's software (dashboard, etc. — still open, below).

@@ -2,7 +2,7 @@ import re, uuid, pathlib
 
 FP_ROOT = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"
 TEMPLATE_PCB = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/template/EuroCard160mmX100mm/EuroCard160mmX100mm.kicad_pcb"
-OUT = pathlib.Path("/Users/arvid/projects/beeer-weight-proto/hardware/keg-module-pcb/keg_sensor_module.kicad_pcb")
+OUT = pathlib.Path("/Users/arvid/projects/beeer-weight-proto/hardware/kegsensor/keg_sensor_module.kicad_pcb")
 
 def extract_balanced(text, start_idx):
     depth = 0

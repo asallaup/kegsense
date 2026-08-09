@@ -44,22 +44,21 @@ outside the keezer, is the only part with Wi-Fi (for the dashboard).
 
 ## Repo layout
 
-- [`hardware/hub-wiring.md`](hardware/hub-wiring.md) — sensor + KegHub
-  wiring design: RJ11/RJ45 pin conventions, parts list, bench-test
-  checklist.
-- [`hardware/keg-module-pcb/`](hardware/keg-module-pcb/) — KegSensor:
-  KiCad schematic/PCB project, 3D-printable case (OpenSCAD), fab-ready
-  Gerbers. See its own README for details, known assumptions to verify
-  against real hardware, and how to regenerate everything.
-- [`hardware/keg-platform/`](hardware/keg-platform/) — load cell holder
-  (OpenSCAD, derived from a third-party design and validated against it)
-  that each corner of a keg's platform mounts on.
-- [`kegstation/`](kegstation/) — KegStation (central unit) planning doc:
-  decisions made so far and what's still open.
+- [`hardware/kegsensor/`](hardware/kegsensor/) — KegSensor: per-keg
+  sensor wiring (RJ11 pin conventions, parts list), KiCad schematic/PCB
+  project, 3D-printable case (OpenSCAD), fab-ready Gerbers, and the load
+  cell platform holder. See its own README(s) for details, known
+  assumptions to verify against real hardware, and how to regenerate
+  everything.
+- [`hardware/keghub/`](hardware/keghub/) — KegHub: the in-keezer passive
+  wiring panel design (RJ45 pin conventions, parts list, bench-test
+  checklist).
+- [`hardware/kegstation/`](hardware/kegstation/) — KegStation (central
+  unit) planning doc: decisions made so far and what's still open.
 
 ## Before ordering/building anything
 
-Both `hardware/keg-module-pcb/README.md` and `hardware/hub-wiring.md`
+Both `hardware/kegsensor/README.md` and `hardware/kegsensor/wiring.md`
 flag specific assumptions (HX711 module pin order, sensor diagonal
 wiring) that need confirming against the actual parts once they're in
 hand — cheap to fix now, annoying after boards are fabricated.

@@ -1326,7 +1326,7 @@
 		)
 		(uuid "c9a62a6c-3aff-4f5a-96aa-f5bf32c0bf7b")
 	)
-	(text "J7 = RJ11 jack to in-keezer hub.\nPin1=GND(Black) Pin2=VCC(Red) Pin3=SCK(Green) Pin4=DT(Yellow).\nMust match hub-side RJ11 pin convention (hub-wiring.md) for a straight-through cable.\nFootprint intentionally left blank - assign to match your exact RJ11 jack part."
+	(text "J7 = RJ11 jack to in-keezer hub.\nPin1=GND(Black) Pin2=VCC(Red) Pin3=SCK(Green) Pin4=DT(Yellow).\nMust match hub-side RJ11 pin convention (wiring.md) for a straight-through cable.\nFootprint intentionally left blank - assign to match your exact RJ11 jack part."
 		(at 220 40 0)
 		(effects
 			(font

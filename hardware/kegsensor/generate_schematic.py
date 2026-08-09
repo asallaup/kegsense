@@ -1,7 +1,7 @@
 import re, uuid, pathlib
 
 LIB_PATH = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols/Connector_Generic.kicad_sym"
-OUT_DIR = pathlib.Path("/Users/arvid/projects/beeer-weight-proto/hardware/keg-module-pcb")
+OUT_DIR = pathlib.Path("/Users/arvid/projects/beeer-weight-proto/hardware/kegsensor")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 PROJECT_NAME = "keg_sensor_module"
 SCH_PATH = OUT_DIR / f"{PROJECT_NAME}.kicad_sch"
@@ -192,7 +192,7 @@ for c in components:
 add_text("Keg Sensor Module - carrier for HX711 breakout + 4x half-bridge sensors + RJ11 to hub", 20, 10, 2)
 add_text("J1=FL J2=FR J3=BR J4=BL corner sensors.\\nDiagonal pairing: J1+J3 -> SIG_POS, J2+J4 -> SIG_NEG.\\nVerify against kit's wiring diagram - swap if reading is inverted/flat.", 20, 145, 1.27)
 add_text("J6 pin order (GND,DT,SCK,VCC) is a common HX711 module layout -\\nCONFIRM against your specific module's silkscreen before wiring/routing.", 130, 130, 1.27)
-add_text("J7 = RJ11 jack to in-keezer hub.\\nPin1=GND(Black) Pin2=VCC(Red) Pin3=SCK(Green) Pin4=DT(Yellow).\\nMust match hub-side RJ11 pin convention (hub-wiring.md) for a straight-through cable.\\nFootprint intentionally left blank - assign to match your exact RJ11 jack part.", 220, 40, 1.27)
+add_text("J7 = RJ11 jack to in-keezer hub.\\nPin1=GND(Black) Pin2=VCC(Red) Pin3=SCK(Green) Pin4=DT(Yellow).\\nMust match hub-side RJ11 pin convention (wiring.md) for a straight-through cable.\\nFootprint intentionally left blank - assign to match your exact RJ11 jack part.", 220, 40, 1.27)
 
 sch = f'''(kicad_sch
 \t(version 20250114)
