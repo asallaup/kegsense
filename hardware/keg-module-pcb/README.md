@@ -11,6 +11,44 @@ per keg.
 KiCad 9 project. Both schematic and PCB (footprints placed, fully routed,
 2-layer) are done and validated (see Validation below).
 
+## Fabrication
+
+**Send `KegSensor_RevA_gerbers.zip` to the PCB manufacturer.** That's the
+complete, standard deliverable — a fab house doesn't need the `.kicad_pcb`
+file itself (though most modern ones, e.g. JLCPCB/PCBWay, also accept it
+directly if you'd rather skip the export step). It contains, generated via
+`kicad-cli pcb export gerbers`/`export drill`:
+
+| File | Contents |
+|------|----------|
+| `*-F_Cu.gtl` / `*-B_Cu.gbl` | Copper layers (top/bottom) |
+| `*-F_Mask.gts` / `*-B_Mask.gbs` | Soldermask |
+| `*-F_Silkscreen.gto` / `*-B_Silkscreen.gbo` | Silkscreen (incl. the KegSensor/Rev A branding) |
+| `*-F_Paste.gtp` / `*-B_Paste.gbp` | Solder paste stencil (only matters if you're getting a stencil cut too) |
+| `*-Edge_Cuts.gm1` | Board outline |
+| `*-job.gbrjob` | Gerber job file (metadata some fabs use to auto-detect stackup) |
+| `*-PTH.drl` / `*-NPTH.drl` | Drill files — plated (component holes) and non-plated (J7's 2 mounting bosses) separately |
+
+The individual files are also in `fab/` (not zipped) if a fab's upload
+tool wants them one at a time rather than as an archive, along with
+`*-drl_map.pdf` drill maps (human-readable cross-reference of hole
+sizes/positions — not needed by the fab, just useful if you want to
+sanity-check the drill file yourself).
+
+**Order quantity**: 5 (one per keg) — check the fab's pricing breaks
+first, since many charge nearly the same for 5 as for 10.
+
+**Before ordering**: resolve the two items under Known assumptions below
+(J6 pin order, SIG_POS/SIG_NEG diagonal pairing) if you haven't already —
+both require rerouting, which is easy to do before fabrication and
+annoying after.
+
+Regenerate the fab package after any board changes:
+```
+kicad-cli pcb export gerbers --layers "F.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts" -o fab/ keg_sensor_module.kicad_pcb
+kicad-cli pcb export drill --format excellon --excellon-separate-th --excellon-units mm --generate-map --map-format pdf -o fab/ keg_sensor_module.kicad_pcb
+```
+
 ## Files
 
 - `keg_sensor_module.kicad_pro` — project file, open this in KiCad
