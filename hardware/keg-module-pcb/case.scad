@@ -119,23 +119,56 @@ module base() {
         // right-wall cutout for J7 / RJ11 cable
         translate([outer_w - wall - 1, rj_cut_y0, rj_cut_z0])
             cube([wall + 2, rj_cut_y1 - rj_cut_y0, rj_cut_z1 - rj_cut_z0]);
+        // engraved branding, front and back walls
+        wall_text_front("Sallaup Electronics", 6);
+        wall_text_back("KegSensor", 8);
     }
 }
 
-// Embossed (raised) branding on the lid top - more forgiving to print
-// cleanly at this size than engraved/recessed text, and readable without
-// needing to fill it with paint/marker.
-text_emboss_h = 0.6;  // ~3 layers at 0.2mm - enough to read/feel, not fragile
+// Engraved (recessed) branding on the case's two plain walls - front
+// (y=0) and back (y=outer_h) are the only walls without a connector
+// cutout already. 0.6mm deep into the 2mm wall (1.4mm remains - plenty
+// strong), centered vertically in the same safe z-band as the connector
+// cutouts (floor_t+2 .. floor_t+wall_ht-2) and horizontally clear of the
+// corner posts.
+engrave_d = 0.6;
+text_z = floor_t + wall_ht / 2;
 
-module lid_text() {
-    translate([outer_w / 2, outer_h / 2 + 9, lid_t])
-        linear_extrude(height = text_emboss_h)
-            text("KegSensor", size = 9, halign = "center", valign = "center",
-                 font = "Liberation Sans:style=Bold");
-    translate([outer_w / 2, outer_h / 2 - 4, lid_t])
-        linear_extrude(height = text_emboss_h)
-            text("Sallaup Electronics", size = 4.5, halign = "center", valign = "center",
-                 font = "Liberation Sans");
+// Getting these two right took two iterations of actually rendering and
+// checking (a true 2D orthographic projection of just the wall in
+// question, not eyeballing a 3D perspective view - that first misled me
+// into "fixing" this with a 180deg rotation, which turned out to swap the
+// wrong axis). Two different corrections are needed, for two different
+// reasons:
+//  - front wall: rotate([-90,0,0]) alone renders text upside down (letters
+//    vertically flipped) - mirror([0,1,0]) on the text before extrusion
+//    fixes it.
+//  - back wall: rotate([90,0,0]) alone renders letters right-side up and
+//    in the same left-to-right order as world +X - but a viewer actually
+//    standing behind the box looking at that face has their own "right"
+//    pointing in world -X (they're facing the opposite direction), so
+//    text in unflipped +X order reads backwards *to them* even though the
+//    raw geometry isn't mirrored. mirror([1,0,0]) corrects for that.
+module wall_text_front(msg, size) {
+    // front wall, exterior face at y=0 - cutter pokes out to y=-0.1 for a
+    // clean boolean and goes engrave_d into the wall (+Y).
+    translate([outer_w / 2, -0.1, text_z])
+        rotate([-90, 0, 0])
+            linear_extrude(height = engrave_d + 0.1)
+                mirror([0, 1, 0])
+                    text(msg, size = size, halign = "center", valign = "center",
+                         font = "Liberation Sans:style=Bold");
+}
+
+module wall_text_back(msg, size) {
+    // back wall, exterior face at y=outer_h - cutter pokes out to
+    // y=outer_h+0.1 and goes engrave_d into the wall (-Y).
+    translate([outer_w / 2, outer_h + 0.1, text_z])
+        rotate([90, 0, 0])
+            linear_extrude(height = engrave_d + 0.1)
+                mirror([1, 0, 0])
+                    text(msg, size = size, halign = "center", valign = "center",
+                         font = "Liberation Sans:style=Bold");
 }
 
 module lid() {
@@ -145,7 +178,6 @@ module lid() {
             translate([p[0], p[1], -0.1])
                 cylinder(d = corner_post_hole_d + 0.6, h = lid_t + 0.2); // clearance for screw head shaft
     }
-    lid_text();
 }
 
 if (PART == "base") {
