@@ -59,12 +59,16 @@ pcb_posts = [
 ];
 
 // ---- connector cutouts ----------------------------------------------------
-// J1-J4 sensor wires exit the board's left edge (board-local x ~7-23,
-// y ~11-79) - cut the case's left wall over that span with margin.
-left_cut_y0 = board_y0 + 8;
-left_cut_y1 = board_y0 + 82;
-left_cut_z0 = floor_t + 2;
-left_cut_z1 = floor_t + wall_ht - 2;
+// J1-J4 sensor wires exit near the board's top edge (board-local x
+// 16-114, y 7.28-22.88 - the row's rotated courtyard span, see
+// generate_pcb.py) - cut the case's front wall (y=0, the wall the board's
+// own y=0 edge sits against) over that span with margin. Previously a
+// vertical column near the left edge with a left-wall cutout; moved when
+// J1-J4 became a horizontal row near the top edge instead.
+front_cut_x0 = board_x0 + 12;
+front_cut_x1 = board_x0 + 118;
+front_cut_z0 = floor_t + 2;
+front_cut_z1 = floor_t + wall_ht - 2;
 
 // J7 (RJ11 jack, RJ14 footprint) sits flush with the board's right edge,
 // rotated so its cable/plug face points +X - courtyard spans board-local
@@ -113,27 +117,30 @@ module base() {
                 translate([p[0], p[1], 0])
                     pcb_post(floor_t + standoff_h);
         }
-        // left-wall wire cutout
-        translate([-1, left_cut_y0, left_cut_z0])
-            cube([wall + 2, left_cut_y1 - left_cut_y0, left_cut_z1 - left_cut_z0]);
+        // front-wall wire cutout for J1-J4
+        translate([front_cut_x0, -1, front_cut_z0])
+            cube([front_cut_x1 - front_cut_x0, wall + 2, front_cut_z1 - front_cut_z0]);
         // right-wall cutout for J7 / RJ11 cable
         translate([outer_w - wall - 1, rj_cut_y0, rj_cut_z0])
             cube([wall + 2, rj_cut_y1 - rj_cut_y0, rj_cut_z1 - rj_cut_z0]);
-        // engraved branding, both lines on the front wall (see wall_text_*
-        // comments below for why front/back needed different fixes -
-        // moot now that only the front wall is used, kept for reference
-        // and in case a wall gets used again later).
-        wall_text_front("KegSensor", 5, text_z + 3.3, false);
-        wall_text_front("Sallaup Electronics", 2.6, text_z - 3, true);
+        // engraved branding, both lines on the back wall - moved here from
+        // the front wall once the front wall gained the J1-J4 cutout above
+        // (it's the widest cutout on the board, leaving no clean centered
+        // span for text). wall_text_back() already had the correct mirror
+        // fix worked out (see its own comment below) from when it was
+        // built but left unused.
+        wall_text_back("KegSensor", 5, text_z + 3.3, false);
+        wall_text_back("Sallaup Electronics", 2.6, text_z - 3, true);
     }
 }
 
-// Engraved (recessed) branding on the case's two plain walls - front
-// (y=0) and back (y=outer_h) are the only walls without a connector
-// cutout already. 0.6mm deep into the 2mm wall (1.4mm remains - plenty
-// strong), centered vertically in the same safe z-band as the connector
-// cutouts (floor_t+2 .. floor_t+wall_ht-2) and horizontally clear of the
-// corner posts.
+// Engraved (recessed) branding on the back wall (y=outer_h) - the one
+// wall without a connector cutout, now that J1-J4 moved to a front-wall
+// cutout (previously the front wall was the plain one; see base()
+// above). 0.6mm deep into the 2mm wall (1.4mm remains - plenty strong),
+// centered vertically in the same safe z-band as the connector cutouts
+// (floor_t+2 .. floor_t+wall_ht-2) and horizontally clear of the corner
+// posts.
 engrave_d = 0.6;
 text_z = floor_t + wall_ht / 2;
 

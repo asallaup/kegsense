@@ -53,7 +53,7 @@ def inject_pad_net(fp_text, pad_num, net_name):
                pad_block[drill_end:])
     return fp_text[:idx] + new_pad + fp_text[idx + len(pad_block):]
 
-def instantiate(fp_text, lib_id, ref, x, y, angle, pad_nets):
+def instantiate(fp_text, lib_id, ref, x, y, angle, pad_nets, ref_at=None):
     text = fp_text
     for pad_num, net_name in pad_nets.items():
         text = inject_pad_net(text, pad_num, net_name)
@@ -61,23 +61,55 @@ def instantiate(fp_text, lib_id, ref, x, y, angle, pad_nets):
                          f'(footprint "{lib_id}"\n\t\t(layer "F.Cu")\n\t\t(uuid "{new_uuid()}")\n\t\t(at {x} {y} {angle})\n\t\t(attr through_hole)',
                          1)
     text = re.sub(r'\(property "Reference" "[^"]*"', f'(property "Reference" "{ref}"', text, count=1)
+    if ref_at is not None:
+        # Override the reference field's own local (at) offset - needed
+        # when the library's default offset (which assumes angle=0) ends
+        # up landing back on top of the footprint's own silkscreen outline
+        # once rotated (KiCad rotates this offset along with everything
+        # else in the footprint).
+        text = re.sub(r'(\(property "Reference" "[^"]*"\s*\n\s*\(at )[^)]+(\))',
+                       lambda m: f'{m.group(1)}{ref_at[0]} {ref_at[1]} {ref_at[2]}{m.group(2)}',
+                       text, count=1)
+    # Every nested pad/graphic uuid comes straight from the library file,
+    # so multiple instances of the same footprint (e.g. J1/J3/J2/J4, all
+    # TerminalBlock_bornier-3) would otherwise share identical pad UUIDs -
+    # confuses DRC's item identification (it started mislabeling which
+    # physical pad a violation was against once there were 4 copies).
+    # Re-roll every uuid in the copy so each instance's sub-items are
+    # actually unique.
+    text = re.sub(r'\(uuid "[0-9a-fA-F-]+"\)', lambda m: f'(uuid "{new_uuid()}")', text)
     return text
 
 components_out = []
 
-def add_component(fp_text, lib_id, ref, x, y, angle, pad_nets):
-    components_out.append(instantiate(fp_text, lib_id, ref, x, y, angle, pad_nets))
+def add_component(fp_text, lib_id, ref, x, y, angle, pad_nets, ref_at=None):
+    components_out.append(instantiate(fp_text, lib_id, ref, x, y, angle, pad_nets, ref_at))
 
-# J1-J4 sensor terminals, reordered physically (FL,BR,FR,BL) so diagonal
-# pairs (SIG_POS/SIG_NEG) are adjacent - widened to 20mm row pitch
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J1", 10, 15, 0,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"})   # FL
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J3", 10, 35, 0,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"})   # BR
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J2", 10, 55, 0,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"})   # FR
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J4", 10, 75, 0,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"})   # BL
+# J1-J4 sensor terminals: horizontal row close to the board's top edge
+# (y=0), 30mm pitch, reordered physically (FL,BR,FR,BL) so diagonal pairs
+# (SIG_POS/SIG_NEG) are adjacent. Rotated -90deg (see J7's rotation-sign
+# comment below for why -90, not +90) so each part's 3 pins stack in Y
+# instead of spreading in X - without that, all 4 parts' pin1/pin2/pin3
+# would land on the exact same 3 y-values, and EXC_POS/EXC_NEG/SIG_POS/
+# SIG_NEG buses (below) would have no way to cross the row without
+# shorting each other. Rotated, each part's own pins share one x (so a
+# horizontal bus at a fixed y cleanly picks up "this pin, every part"),
+# mirroring how the pre-rotation vertical layout used a fixed x per pin.
+# ref_at=(5.05,-9,0): library default is (5.05,-4.65,0), which after the
+# -90 rotation above lands at local (4.65,5.05) - just outside the
+# unrotated courtyard but overlapping it post-rotation (DRC: silk_overlap
+# against the part's own silkscreen outline). Pushing further out along
+# the same local axis moves it to (9,5.05) post-rotation, clear of the
+# rotated courtyard (+-4mm) - confirmed via DRC, not just computed by hand.
+REF_AT = (5.05, -9, 0)
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J1", 20, 10, -90,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"}, REF_AT)   # FL
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J3", 50, 10, -90,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"}, REF_AT)   # BR
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J2", 80, 10, -90,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"}, REF_AT)   # FR
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J4", 110, 10, -90,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"}, REF_AT)   # BL
 
 # J5: HX711 load-cell side header
 add_component(FP_PINSOCKET4, "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical", "J5", 60, 35, 0,
@@ -142,25 +174,47 @@ def via(x, y, net_name):
 \t\t(uuid "{new_uuid()}")
 \t)''')
 
-# -- J1-J4 <-> J5 bus (F.Cu vertical buses, B.Cu diagonal jogs via vias) --
-# Tap points chosen in the SAME relative order as their J5 target pads
-# (20 < 30 < 32 < 60, matching EXC_POS<EXC_NEG<SIG_POS<SIG_NEG targets)
-# so the 4 B.Cu diagonals fan in without crossing each other.
-track(10, 15, 10, 75, "F.Cu", "EXC_POS")
-via(10, 20, "EXC_POS")
-track(10, 20, 60, 35, "B.Cu", "EXC_POS")          # -> J5 pad1 (60,35)
+# -- J1-J4 <-> J5 bus (F.Cu horizontal buses, B.Cu diagonal jogs via vias) --
+# Rotated J1-J4 (see placement comment above) put each part's own pins on
+# one shared x, at fixed y offsets 0/5.08/10.16 from its placement y=10 -
+# i.e. pin1 of every part sits at y=10, pin2 at y=15.08, pin3 at y=20.16,
+# regardless of which part. So "pin N, every part" is a straight
+# horizontal F.Cu run at that fixed y, exactly mirroring how the
+# pre-rotation layout used a fixed x per pin. SIG_POS/SIG_NEG share pin3's
+# y=20.16 but stay on disjoint x-ranges (J1+J3 vs J2+J4), same trick the
+# old layout used with disjoint y-ranges at a shared x.
+# Tap points all kept at x<=85, i.e. clear of the J6<->J7 corridor (which
+# starts at x=93 - see VCC_3V3's B.Cu vertical below) - an earlier version
+# of this used tap x=95/100, and those diagonals cut straight through that
+# corridor's B.Cu traces, DRC-flagged as both track-crossing and solder
+# mask bridge shorts. Also chosen (30 < 85, 35 < 82) so, combined with the
+# target y ordering at J5 (35 < 37.54 < 40.08 < 42.62), the 4 diagonals
+# fan in without crossing each other (verified via DRC, not just by eye).
+track(20, 10, 110, 10, "F.Cu", "EXC_POS")           # pin1: J1,J3,J2,J4
+via(30, 10, "EXC_POS")
+track(30, 10, 60, 35, "B.Cu", "EXC_POS")          # -> J5 pad1 (60,35)
 
-track(15.08, 15, 15.08, 75, "F.Cu", "EXC_NEG")
-via(15.08, 30, "EXC_NEG")
-track(15.08, 30, 60, 37.54, "B.Cu", "EXC_NEG")    # -> J5 pad2 (60,37.54)
+track(20, 15.08, 110, 15.08, "F.Cu", "EXC_NEG")     # pin2: J1,J3,J2,J4
+# Tap at x=62 (not a direct diagonal) - two earlier attempts both failed
+# DRC: x=85's diagonal cut through J2's own pad3 (80,20.16), and a
+# straight diagonal from x=65 swung within ~0.55mm of J5's own pad1
+# (60,35) on its way in to pad2, since pad1/pad2 are only 2.54mm apart.
+# This L-shape - a near-vertical run at x=62 (2mm clear of pad1, still
+# clear of SIG_NEG's diagonal further right - see below) then a short
+# final horizontal AT pad2's own y=37.54 - never gets closer than 2mm to
+# pad1 at any point, unlike a diagonal that necessarily passes close to
+# it en route to the adjacent pad.
+via(62, 15.08, "EXC_NEG")
+track(62, 15.08, 62, 37.54, "B.Cu", "EXC_NEG")
+track(62, 37.54, 60, 37.54, "B.Cu", "EXC_NEG")    # -> J5 pad2 (60,37.54)
 
-track(20.16, 15, 20.16, 35, "F.Cu", "SIG_POS")    # J1+J3 only
-via(20.16, 32, "SIG_POS")
-track(20.16, 32, 60, 40.08, "B.Cu", "SIG_POS")    # -> J5 pad3 (60,40.08)
+track(20, 20.16, 50, 20.16, "F.Cu", "SIG_POS")      # pin3: J1+J3 only
+via(35, 20.16, "SIG_POS")
+track(35, 20.16, 60, 40.08, "B.Cu", "SIG_POS")    # -> J5 pad3 (60,40.08)
 
-track(20.16, 55, 20.16, 75, "F.Cu", "SIG_NEG")    # J2+J4 only
-via(20.16, 60, "SIG_NEG")
-track(20.16, 60, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
+track(80, 20.16, 110, 20.16, "F.Cu", "SIG_NEG")     # pin3: J2+J4 only
+via(82, 20.16, "SIG_NEG")
+track(82, 20.16, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
 
 # -- J6 <-> J7 (J7 now at (146,35) rotated 90deg - see J7 comment above)
 # Pads: pad1=GND(146,35) pad2=VCC(143.46,36.02) pad3=SCK(146,37.04)
@@ -182,11 +236,17 @@ track(20.16, 60, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
 # occupy non-overlapping y-ranges and can share that x safely. Both stay
 # >=2.3mm from J7's NPTH holes at (148.3,30.53)/(148.3,42.53) - tight but
 # clear (need 1.875mm).
+# Lane y=25, not the original 20 - y=20 ran only 0.16mm from J4's new
+# pad3 (110,20.16) once J1-J4 moved up near the top edge (real
+# copper-to-copper overlap, not just a warning: DRC flagged both
+# shorting_items and solder_mask_bridge). y=25 clears J1-J4's courtyard
+# (bottom edge at y=22.88) and the row's own bus/diagonal routing (all
+# at y<=20.16), with nothing else routed through this gap before J5/J6.
 track(95, 35, 97, 35, "F.Cu", "GND")
 via(97, 35, "GND")
-track(97, 35, 97, 20, "B.Cu", "GND")
-track(97, 20, 146, 20, "B.Cu", "GND")
-track(146, 20, 146, 35, "B.Cu", "GND")             # -> J7 pad1 (146,35), from above
+track(97, 35, 97, 25, "B.Cu", "GND")
+track(97, 25, 146, 25, "B.Cu", "GND")
+track(146, 25, 146, 35, "B.Cu", "GND")             # -> J7 pad1 (146,35), from above
 
 # lane y=52, not 45 - DT's escape/approach verticals occupy y=37.54-50 at
 # x=101/143.46, both within this horizontal's x-span, so 45 crossed them.

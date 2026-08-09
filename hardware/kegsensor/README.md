@@ -108,22 +108,33 @@ J5.A-; J6↔J7 pass GND/DT/SCK/VCC straight through to the hub cable.
 
 ## Physical layout
 
-Sensor terminals (J1–J4) are placed FL/BR/FR/BL top-to-bottom (not source
+Sensor terminals (J1–J4) sit in a horizontal row close to the board's top
+edge (y≈10, 30mm pitch), ordered FL/BR/FR/BL left-to-right (not source
 order) so the diagonal pairs (SIG_POS = J1+J3, SIG_NEG = J2+J4) sit next to
-each other. J5 (HX711 load-cell side) sits close by on the same side —
-these are the noise-sensitive analog connections, kept short and away from
-the digital/power section. J6 (HX711 digital side) sits with J5; J7 (RJ11
-to hub) is rotated -90° and placed flush with the board's right edge
-(x=155) — it was originally placed mid-board with no edge access at all
-(a case built around that position would have made the connector
-unreachable from outside — caught and fixed; see git history), and any
-edge-mounted connector belongs at the board edge as a matter of course,
-independent of the case.
+each other. Each is rotated -90° so its 3 pins stack vertically instead of
+spreading horizontally — needed for clean bus routing (see below), not
+just layout taste. J5 (HX711 load-cell side) sits below the row, on the
+same side — these are the noise-sensitive analog connections, kept short
+and away from the digital/power section. J6 (HX711 digital side) sits with
+J5; J7 (RJ11 to hub) is rotated -90° and placed flush with the board's
+right edge (x=155) — it was originally placed mid-board with no edge
+access at all (a case built around that position would have made the
+connector unreachable from outside — caught and fixed; see git history),
+and any edge-mounted connector belongs at the board edge as a matter of
+course, independent of the case.
 
-Routing uses both copper layers: the analog bus (EXC_POS/EXC_NEG spanning
-all 4 sensors, plus the SIG_POS/SIG_NEG diagonal pairs) runs on F.Cu with
-short B.Cu jogs into J5. The J6↔J7 digital/power nets were the fiddliest
-part of this board — RJ14's 4 pads are packed into roughly 3×2.5mm, so
+Routing uses both copper layers: J1-J4's own pin1/pin2/pin3 rows run as
+horizontal F.Cu buses (pin N of every part shares one y, since the
+rotation above puts every part's pins on its own single x) with short B.Cu
+jogs into J5 — mirroring, transposed, the same tap-point-ordering trick
+used to fan the 4 buses into J5's 4 pads without crossing each other. Two
+of those jogs needed an extra bend rather than a straight diagonal: a
+straight line from a tap point to J5's pad would otherwise pass close by
+an unrelated pad along the way (either another J1-J4 part's own pad, or
+J5's *adjacent* pad, 2.54mm from its actual target) — both real DRC
+failures (`shorting_items`/`solder_mask_bridge`) the first time through,
+not just style. The J6↔J7 digital/power nets were the fiddliest part of
+this board — RJ14's 4 pads are packed into roughly 3×2.5mm, so
 GND/SCK/DT/VCC needed carefully routed detours (a couple of vias) to avoid
 grazing each other's pads at that pitch, made harder by J7 sitting right at
 the board edge; see the comments in `generate_pcb.py` for the reasoning
@@ -171,8 +182,11 @@ separate flat lid, screwed together at 4 corner posts (M3 self-tapping,
   height dimensions for any of these parts from datasheets, so treat this
   as a reasonable guess, not a verified fit. If a first print is too
   cramped, bump `component_clear` in `case.scad` and reprint just the base.
-- **Left wall has an open cutout** spanning the J1–J4 sensor terminal row,
-  for the 4 sensor cables to exit.
+- **Front wall (y=0) has an open cutout** spanning the J1–J4 sensor
+  terminal row, for the 4 sensor cables to exit — moved here from a
+  left-wall cutout when J1-J4 moved from a vertical column near the left
+  edge to a horizontal row near the top edge (board-local y=0 is the
+  board's own top edge, which sits against the case's front wall).
 - **Right wall has a cutout matching J7's position** (board-local y=26-47,
   the right wall since J7 sits flush with the board edge there — see
   Physical layout above). Earlier drafts had J7 positioned mid-board with
@@ -182,29 +196,33 @@ separate flat lid, screwed together at 4 corner posts (M3 self-tapping,
   moving J7 to the board edge (the correct fix — any case built around the
   original position would need an internal tunnel to reach a mid-board
   connector, which isn't good practice regardless of the case).
-- **Base is branded, engraved (not raised)**, both lines on the front
-  wall (the only wall without a connector cutout): "KegSensor" (bold,
-  size 5) above "Sallaup Electronics" (italic, size 2.6, smaller as a
-  subtitle). Recessed 0.6mm into the 2mm wall (1.4mm remains, plenty
-  strong), centered horizontally and stacked vertically in the safe
-  z-band shared with the connector cutouts. See
-  `case_engrave_front_preview.png` — rendered as a true 2D orthographic
-  projection from the wall's own outside-viewer perspective, not a 3D
-  angle shot, because that's what actually caught a real bug (below).
-  Text is generated with OpenSCAD's `text()` primitive directly from the
-  strings in `case.scad`, not hand-drawn, so there's no typo risk — but
-  getting an engraved letter *oriented* correctly on a vertical wall
-  needed two rounds of actually rendering and checking, not assuming: an
-  earlier attempt (briefly split across front and back walls) read
-  upside-down at first; the fix that came from reasoning about a 3D
-  perspective render (a 180° rotation) turned out to correct the vertical
-  flip but introduce a horizontal mirror instead, only caught by
-  switching to a true top-down 2D projection. `wall_text_back()` is still
-  in `case.scad`, unused, in case a wall ever carries text again — it
-  needs a *different* fix than the front wall for a real reason, not
-  just a different wrong guess: a viewer standing behind the box faces
+- **Base is branded, engraved (not raised)**, both lines on the back
+  wall (y=outer_h — the one wall without a connector cutout, now that
+  J1-J4's cutout moved to the front wall): "KegSensor" (bold, size 5)
+  above "Sallaup Electronics" (italic, size 2.6, smaller as a subtitle).
+  Recessed 0.6mm into the 2mm wall (1.4mm remains, plenty strong),
+  centered horizontally and stacked vertically in the safe z-band shared
+  with the connector cutouts. See `case_engrave_back_preview.png` —
+  rendered as a true 2D orthographic projection from the wall's own
+  outside-viewer perspective, not a 3D angle shot, because that's what
+  actually caught a real bug (below). Text is generated with OpenSCAD's
+  `text()` primitive directly from the strings in `case.scad`, not
+  hand-drawn, so there's no typo risk — but getting an engraved letter
+  *oriented* correctly on a vertical wall needed two rounds of actually
+  rendering and checking, not assuming: an earlier attempt (briefly split
+  across front and back walls) read upside-down at first; the fix that
+  came from reasoning about a 3D perspective render (a 180° rotation)
+  turned out to correct the vertical flip but introduce a horizontal
+  mirror instead, only caught by switching to a true top-down 2D
+  projection. `wall_text_back()` — unused at the time, kept in reserve —
+  is what's actually in use now that the branding moved off the front
+  wall; it needs a *different* fix than the front wall for a real reason,
+  not just a different wrong guess: a viewer standing behind the box faces
   the opposite direction, so their own left/right is reversed relative to
   the box's coordinate frame even when the raw geometry isn't mirrored.
+  Re-verified after the move (mirrored 2D cross-section at the engrave
+  depth, viewed from the actual outside-viewer's perspective) — both
+  lines still read correctly.
 
 Regenerate with `./generate_case.sh` after editing `case.scad` (needs
 OpenSCAD: `brew install --cask openscad`; this cask fails macOS Gatekeeper,
@@ -220,12 +238,23 @@ fridge/freezer temperature and PLA gets brittle cold.
   intended design (see table above)
 - `kicad-cli sch export pdf` → visually reviewed, no overlapping labels or
   stray connections
-- `kicad-cli pcb drc` on the fully routed board → 0 violations, 0
-  unconnected pads (iterated repeatedly: the first full layout pass found
-  17 real clearance/short issues from too-tight spacing; switching J7 from
-  the RJ9 to the RJ14 footprint reset the J6↔J7 routing and took several
-  more DRC-guided rounds to clear, since RJ14's pads are much more tightly
-  packed)
+- `kicad-cli pcb drc` on the fully routed board → 0 errors, 0 unconnected
+  pads (only pre-existing accepted warnings remain: J7's silkscreen edge
+  clearance and the local-footprint-override notices for J7/J1-J4 — see
+  their own comments). Iterated repeatedly: the first full layout pass
+  found 17 real clearance/short issues from too-tight spacing; switching
+  J7 from the RJ9 to the RJ14 footprint reset the J6↔J7 routing and took
+  several more DRC-guided rounds to clear, since RJ14's pads are much more
+  tightly packed. Moving J1-J4 to a horizontal row (see Physical layout)
+  went through the same cycle: a straight diagonal tap point cut through
+  an unrelated pad's copper twice before landing on the current routing,
+  each time caught by DRC, not by eye. That pass also surfaced a separate
+  latent bug: `generate_pcb.py`'s footprint copies kept the *library's*
+  pad/graphic UUIDs verbatim, so multiple instances of the same footprint
+  (J1/J3/J2/J4, all `TerminalBlock_bornier-3`) shared identical pad UUIDs
+  - DRC started mislabeling which physical pad a violation was actually
+  against once there were 4 copies on the board. Fixed by re-rolling every
+  nested UUID per instance, not just the footprint's own top-level one.
 - `kicad-cli pcb render` → top and bottom copper renders visually reviewed
   for sane, non-overlapping routing
 - Case: OpenSCAD's CGAL export reports both `case_base.stl` and
