@@ -119,9 +119,12 @@ module base() {
         // right-wall cutout for J7 / RJ11 cable
         translate([outer_w - wall - 1, rj_cut_y0, rj_cut_z0])
             cube([wall + 2, rj_cut_y1 - rj_cut_y0, rj_cut_z1 - rj_cut_z0]);
-        // engraved branding, front and back walls
-        wall_text_front("Sallaup Electronics", 6);
-        wall_text_back("KegSensor", 8);
+        // engraved branding, both lines on the front wall (see wall_text_*
+        // comments below for why front/back needed different fixes -
+        // moot now that only the front wall is used, kept for reference
+        // and in case a wall gets used again later).
+        wall_text_front("KegSensor", 5, text_z + 3.3, false);
+        wall_text_front("Sallaup Electronics", 2.6, text_z - 3, true);
     }
 }
 
@@ -149,26 +152,28 @@ text_z = floor_t + wall_ht / 2;
 //    pointing in world -X (they're facing the opposite direction), so
 //    text in unflipped +X order reads backwards *to them* even though the
 //    raw geometry isn't mirrored. mirror([1,0,0]) corrects for that.
-module wall_text_front(msg, size) {
+module wall_text_front(msg, size, z = text_z, italic = false) {
     // front wall, exterior face at y=0 - cutter pokes out to y=-0.1 for a
     // clean boolean and goes engrave_d into the wall (+Y).
-    translate([outer_w / 2, -0.1, text_z])
+    style = italic ? "Italic" : "Bold";
+    translate([outer_w / 2, -0.1, z])
         rotate([-90, 0, 0])
             linear_extrude(height = engrave_d + 0.1)
                 mirror([0, 1, 0])
                     text(msg, size = size, halign = "center", valign = "center",
-                         font = "Liberation Sans:style=Bold");
+                         font = str("Liberation Sans:style=", style));
 }
 
-module wall_text_back(msg, size) {
+module wall_text_back(msg, size, z = text_z, italic = false) {
     // back wall, exterior face at y=outer_h - cutter pokes out to
     // y=outer_h+0.1 and goes engrave_d into the wall (-Y).
-    translate([outer_w / 2, outer_h + 0.1, text_z])
+    style = italic ? "Italic" : "Bold";
+    translate([outer_w / 2, outer_h + 0.1, z])
         rotate([90, 0, 0])
             linear_extrude(height = engrave_d + 0.1)
                 mirror([1, 0, 0])
                     text(msg, size = size, halign = "center", valign = "center",
-                         font = "Liberation Sans:style=Bold");
+                         font = str("Liberation Sans:style=", style));
 }
 
 module lid() {

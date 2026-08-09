@@ -182,26 +182,29 @@ separate flat lid, screwed together at 4 corner posts (M3 self-tapping,
   moving J7 to the board edge (the correct fix — any case built around the
   original position would need an internal tunnel to reach a mid-board
   connector, which isn't good practice regardless of the case).
-- **Base is branded, engraved (not raised)**: "Sallaup Electronics" on the
-  front wall, "KegSensor" on the back wall — the only two walls without a
-  connector cutout already. Recessed 0.6mm into the 2mm wall (1.4mm
-  remains, plenty strong), centered vertically in the same safe z-band as
-  the connector cutouts. See `case_engrave_front_preview.png` /
-  `_back_preview.png` — each rendered as a true 2D orthographic projection
-  from that wall's own outside-viewer perspective, not a 3D angle shot,
-  because that's what actually caught the bug described next.
+- **Base is branded, engraved (not raised)**, both lines on the front
+  wall (the only wall without a connector cutout): "KegSensor" (bold,
+  size 5) above "Sallaup Electronics" (italic, size 2.6, smaller as a
+  subtitle). Recessed 0.6mm into the 2mm wall (1.4mm remains, plenty
+  strong), centered horizontally and stacked vertically in the safe
+  z-band shared with the connector cutouts. See
+  `case_engrave_front_preview.png` — rendered as a true 2D orthographic
+  projection from the wall's own outside-viewer perspective, not a 3D
+  angle shot, because that's what actually caught a real bug (below).
   Text is generated with OpenSCAD's `text()` primitive directly from the
   strings in `case.scad`, not hand-drawn, so there's no typo risk — but
   getting an engraved letter *oriented* correctly on a vertical wall
-  needed two rounds of actually rendering and checking, not assuming:
-  the first correction (a 180° rotation, reasoning from a 3D perspective
-  render that looked upside-down) turned out to fix the vertical flip but
-  introduce a horizontal mirror instead, only caught by switching to a
-  true top-down 2D projection. The two walls also needed *different*
-  fixes for a subtler reason than either being "wrong": a viewer standing
-  behind the box faces the opposite direction, so their own left/right
-  is reversed relative to the box's coordinate frame even when the raw
-  geometry isn't mirrored — worth remembering for any future wall text.
+  needed two rounds of actually rendering and checking, not assuming: an
+  earlier attempt (briefly split across front and back walls) read
+  upside-down at first; the fix that came from reasoning about a 3D
+  perspective render (a 180° rotation) turned out to correct the vertical
+  flip but introduce a horizontal mirror instead, only caught by
+  switching to a true top-down 2D projection. `wall_text_back()` is still
+  in `case.scad`, unused, in case a wall ever carries text again — it
+  needs a *different* fix than the front wall for a real reason, not
+  just a different wrong guess: a viewer standing behind the box faces
+  the opposite direction, so their own left/right is reversed relative to
+  the box's coordinate frame even when the raw geometry isn't mirrored.
 
 Regenerate with `./generate_case.sh` after editing `case.scad` (needs
 OpenSCAD: `brew install --cask openscad`; this cask fails macOS Gatekeeper,
