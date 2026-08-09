@@ -26,9 +26,12 @@ outside the keezer, is the only part with Wi-Fi (for the dashboard).
 
 ## Status
 
-- ✅ **KegSensor** (per-keg module) — schematic + PCB routed and
-  DRC-clean, 3D-printable case designed and validated, fab-ready Gerbers
-  generated. Ready to order/print; not yet physically built or tested.
+- 🚧 **KegSensor** (per-keg module) — **draft design**, still likely to
+  change. Schematic + PCB routed and DRC-clean, 3D-printable case
+  designed and validated, fab-ready Gerbers generated — but none of it
+  has been physically built, and it hasn't been ordered/printed yet.
+  Treat as a working draft, not a locked design, until it's been through
+  a real build.
 - 🚧 **In-keezer hub** — wiring design (RJ11/RJ45 pin conventions, parts
   list) documented; physical build not started.
 - 🚧 **KegStation** (central unit) — architecture decisions documented
