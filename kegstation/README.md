@@ -113,3 +113,15 @@ the KegSensor module).
   readings file the C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
   case already built).
+- **Calibration front-end: keypad+OLED vs. web page vs. both — not yet
+  decided.** Both are viable on top of the same `kegcal` CLI commands
+  (see above), so this doesn't block building the daemon/CLI itself.
+  The trade-off raised so far: a physical keypad + the (already-planned)
+  OLED means calibration works fully standalone, with no phone or
+  network needed — arguably in the spirit of KegStation being a
+  self-contained unit, not dependent on Wi-Fi/a browser for its core
+  job. A web page is less hardware to build (reuses the same "small
+  local web server + form" pattern already used for the Comitup Wi-Fi
+  setup page) but means calibration requires a working network and a
+  phone/laptop in hand. Leaning toward keypad+OLED as the real interface
+  with a web page as a later convenience layer, but not committed.
