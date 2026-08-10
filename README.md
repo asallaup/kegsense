@@ -3,10 +3,10 @@
 Keg weight/level monitoring for a keezer, by **Sallaup Electronics**.
 
 Each keg sits on a load cell. A per-keg board reads the weight and sends
-it over a wired connection to a central unit, which shows all kegs (brew
-name + weight/% remaining) on a display mounted on the keezer and mirrors
-the same view to a web dashboard you can check remotely — so you know how
-much beer is left without opening the lid.
+it over a wired connection to a central unit, which drives a small OLED
+at each keg's own tap (brew name + weight/% remaining, right where you're
+pouring from) and mirrors the same view to a web dashboard you can check
+remotely — so you know how much beer is left without opening the lid.
 
 ## System overview
 
