@@ -276,8 +276,18 @@ track(65, 42.62, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
 # is the *reverse* of the west-side version: shallowest lane (GND) gets
 # the stub furthest from J6 (103, so its lane's span starts past every
 # other net's drop), deepest (DT) gets the one closest to J6 (97).
-track(95, 35, 103, 35, "F.Cu", "GND")
-via(103, 35, "GND")
+#
+# J6's pads are through-hole (copper on both F.Cu and B.Cu already), so a
+# track can just start on whichever layer it needs directly at the pad -
+# an earlier version routed a short F.Cu stub off J6 before via-ing to
+# B.Cu, on every net, which turned out to be vestigial for two of them
+# (nothing else occupies F.Cu right at J6, or did once SCK moved off
+# B.Cu entirely - see below). GND is a single unbroken B.Cu line, no via.
+# SCK is a single unbroken F.Cu line, no via - it needs to cross DT's
+# B.Cu horizontal (at y=74, out to x=142.94) somewhere along the way, and
+# F.Cu is otherwise clear along SCK's whole path (J1-J4/J5's F.Cu stuff
+# stays within x<=110, y<=35, well clear of SCK's x=95-143.96, y=40.08-81).
+track(95, 35, 103, 35, "B.Cu", "GND")
 track(103, 35, 103, 45, "B.Cu", "GND")
 track(103, 45, 149, 45, "B.Cu", "GND")
 # Offset to x=149, not straight into pad1's own x=146 - that vertical
@@ -289,27 +299,33 @@ track(103, 45, 149, 45, "B.Cu", "GND")
 track(149, 45, 149, 81, "B.Cu", "GND")
 track(149, 81, 146, 81, "B.Cu", "GND")             # -> J7 pad1 (146,81)
 
+# Stub at x=102, not 99 - VCC_3V3's own stub (below) is F.Cu too now and
+# reaches to x=101, so 99 landed inside it (DRC: tracks_crossing).
+track(95, 40.08, 102, 40.08, "F.Cu", "SCK")
+track(102, 40.08, 102, 65, "F.Cu", "SCK")
+# Same fix as GND above, offset the other way: straight into pad3's own
+# x=143.96 ran within 1.02mm of J7 pad2 (VCC) the whole way down. x=140
+# stays clear of VCC (144.98) and DT (142.94) alike.
+track(102, 65, 140, 65, "F.Cu", "SCK")
+track(140, 65, 140, 81, "F.Cu", "SCK")
+track(140, 81, 143.96, 81, "F.Cu", "SCK")          # -> J7 pad3 (143.96,81)
+
+# VCC_3V3 and DT are the two nets that genuinely can't also drop their
+# via, not from a missed simplification but real geometry: each needs a
+# lane deep enough that its drop, on the way down, passes through the
+# *other's* row at J6 (VCC's source y=42.62 sits inside DT's drop range
+# 37.54-74; DT's source y=37.54 likewise sits inside VCC's own drop
+# range once VCC is deep enough to matter) - so whichever one is "in the
+# way" at that crossing point needs to be on the opposite layer right
+# there, which means starting that specific stub on F.Cu rather than
+# B.Cu. Checked exhaustively (every pairing among GND/VCC/DT/SCK, not
+# just the one conflict DRC first caught after a first attempt put both
+# on B.Cu) - this is the minimum: 2 vias total (one each), not 4.
 track(95, 42.62, 101, 42.62, "F.Cu", "VCC_3V3")
 via(101, 42.62, "VCC_3V3")
 track(101, 42.62, 101, 55, "B.Cu", "VCC_3V3")
 track(101, 55, 144.98, 55, "B.Cu", "VCC_3V3")
 track(144.98, 55, 144.98, 78.46, "B.Cu", "VCC_3V3")  # -> J7 pad2 (144.98,78.46)
-
-track(95, 40.08, 99, 40.08, "F.Cu", "SCK")
-via(99, 40.08, "SCK")
-track(99, 40.08, 99, 65, "B.Cu", "SCK")
-# Same fix as GND above, offset the other way: straight into pad3's own
-# x=143.96 ran within 1.02mm of J7 pad2 (VCC) the whole way down. x=140
-# stays clear of VCC (144.98) and DT (142.94) alike - but that offset
-# vertical, going from y=65 down to 81, now crosses DT's own B.Cu
-# horizontal (which runs at y=74 all the way out to x=142.94, well past
-# x=140). Hopping to F.Cu for the rest of this net's approach (a
-# different layer than DT's B.Cu run) sidesteps that regardless of the
-# exact x chosen.
-via(99, 65, "SCK")
-track(99, 65, 140, 65, "F.Cu", "SCK")
-track(140, 65, 140, 81, "F.Cu", "SCK")
-track(140, 81, 143.96, 81, "F.Cu", "SCK")          # -> J7 pad3 (143.96,81)
 
 track(95, 37.54, 97, 37.54, "F.Cu", "DT")
 via(97, 37.54, "DT")

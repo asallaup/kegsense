@@ -150,10 +150,22 @@ request — which flips *which* net needs the shallowest lane: since every
 lane then extends the rest of the way east to J7 regardless of where its
 own stub sits, the depth/stub-position pairing that avoids crossings
 turned out to be the mirror image of the west-jog version (shallowest
-lane ↔ stub furthest from J6, not closest). See the comments in
-`generate_pcb.py` for the exact reasoning behind each routing decision —
-several were only found by DRC catching a real short or clearance
-violation, not worked out by eye in advance.
+lane ↔ stub furthest from J6, not closest).
+
+GND and SCK are each a single unbroken line on one layer (B.Cu and F.Cu
+respectively), no vias — J6's pads are through-hole, so a track can just
+start on whichever layer it needs directly at the pad; both had a
+vestigial F.Cu stub in an earlier version that wasn't actually needed.
+VCC_3V3 and DT can't drop theirs, though, and this isn't a missed
+simplification — checked exhaustively, not just patched around the first
+conflict DRC caught: VCC's own source row at J6 sits inside DT's drop's
+depth range, and DT's row sits inside VCC's, so whichever one is "in the
+way" at that crossing needs to be on the other layer right there. Two
+vias is the minimum for this connector, not four.
+
+See the comments in `generate_pcb.py` for the exact reasoning behind each
+routing decision — several were only found by DRC catching a real short
+or clearance violation, not worked out by eye in advance.
 
 **Note on KiCad footprint rotation**: got this wrong once already — KiCad's
 `(at x y angle)` rotation is the opposite sign of the standard math
