@@ -92,23 +92,71 @@ for the equivalent docs that preceded the KegSensor module).
 - **One OLED per keg, mounted at/over that keg's own tap** — not one
   shared display listing all 5 kegs. Each shows just its own keg's brew
   name + weight/% remaining, right where you're actually pouring from.
-  - **Real technical wrinkle this creates**: cheap small OLEDs are
-    almost all I2C, and the common ones (SSD1306 etc.) ship at a fixed
-    address (usually 0x3C, sometimes a solder-jumper-selectable second
-    address) — putting 5 on one I2C bus directly won't work, since at
-    most 2 could coexist by address alone. Needs either an I2C
-    multiplexer (e.g. TCA9548A, one channel per keg) or SPI OLEDs
-    instead (each takes its own chip-select line off the Pi, more GPIO
-    pins used but no addressing conflict). Not decided yet — see below.
   - **New wiring run this creates**: KegStation sits outside the keezer
     (see System overview in the root README), but taps are mounted at
-    the keezer itself — so unlike the OLED-at-KegStation version of this
-    plan, each display now needs its own wired run out to its tap. Still
-    a wired connection (consistent with the no-WiFi-in-the-keezer rule,
-    which is about radios, not wired signals) but a physical run that
-    didn't need to exist before this decision, and isn't scoped yet
-    (routed through KegHub alongside the load-cell wiring, or run
-    separately - not decided).
+    the keezer itself — so unlike a single-shared-display plan, each
+    display now needs its own wired run out to its tap. Still a wired
+    connection (consistent with the no-WiFi-in-the-keezer rule, which is
+    about radios, not wired signals) but a physical run that didn't need
+    to exist before this decision.
+  - **Why not just 5 bare I2C OLEDs**: cheap small OLEDs (SSD1306 etc.)
+    ship at a fixed I2C address (usually 0x3C) — putting 5 on one bus
+    directly doesn't work, at most 2 could coexist by address alone.
+    Ruled out an I2C multiplexer (TCA9548A) and SPI (needs its own
+    chip-select line per display off the Pi) in favor of the design
+    below, which solves both the addressing problem *and* the long
+    cable run problem in one move.
+
+- **KegDisplay: a combined Arduino Nano + OLED board, one per keg,
+  daisy-chained over RS-485.** Each tap gets its own small board (Nano +
+  OLED on one PCB, OLED wired directly to its own Nano over short local
+  I2C traces — no cable, no connector for that link) rather than a bare
+  OLED talking straight to the Pi.
+  - **Why this solves the addressing problem**: an OLED driver chip's
+    I2C address is fixed in hardware, but a microcontroller's address
+    (or, here, its node address on the RS-485 line) is just a value set
+    in its own firmware — freely chosen, no collision between the 5
+    KegDisplay boards even though every OLED behind them answers to the
+    same fixed address locally.
+  - **Why RS-485, not I2C, for the run back to KegStation**: I2C's
+    open-drain bus has a real capacitance/distance budget that gets
+    tight over long or multi-drop cable runs; RS-485 is a differential
+    signaling standard built specifically for long, noisy, multi-drop
+    runs (the same class of problem as industrial sensor networks).
+    Each KegDisplay gets a cheap transceiver chip (e.g. MAX485); the Pi
+    needs a USB-to-RS485 adapter or HAT.
+  - **Connectors**: two RS-485 connectors per KegDisplay board (IN/OUT),
+    wired in parallel so boards daisy-chain tap to tap — one cable
+    hopping from KegStation to keg 1 to keg 2 ... to keg 5, instead of 5
+    separate home-run cables. RS-485 actively prefers this topology
+    (star wiring causes reflections); a bare OLED wouldn't have this
+    connector pattern, only the Nano side does.
+  - **Termination**: a 120Ω resistor at each *end* of the chain
+    (KegStation end and the last KegDisplay) — not at the intermediate
+    boards — to prevent signal reflections. Cheap insurance even on a
+    short, slow bus.
+  - **Addressing/protocol on the RS-485 line**: not yet decided between
+    Modbus RTU (established, off-the-shelf protocol for exactly this
+    "poll device N over a shared line" pattern, with existing Arduino
+    libraries) or a small custom protocol.
+  - **Power**: distributed down the *same* 4-wire daisy-chain cable as
+    the RS-485 signal (A, B, GND, +V) — RS-485 itself doesn't carry
+    power (unlike PoE), but nothing stops running power on separate
+    conductors in the same cable, so no separate power supply is needed
+    at each KegDisplay. The chain as a whole still needs its own supply,
+    separate from the Pi's own 5V one — voltage not locked in (12V is a
+    reasonable default, cheap and widely available, with a small local
+    regulator on each KegDisplay stepping down to what the Nano/OLED
+    need — higher distribution voltage means lower current for the same
+    power, which means less voltage drop over distance) but the actual
+    number depends on real cable length and total current draw, neither
+    measured yet.
+  - **Consequence for calibration UI**: weakens (doesn't rule out) the
+    keypad+OLED idea below, since there's no longer one central OLED at
+    KegStation to pair a keypad with — see Still Open.
+  - **Not yet built or prototyped** — this whole design came out of
+    conversation, not a physical test yet. Same "verify against real
+    hardware before calling it done" standard as everything else here.
 
 ## Still open
 
@@ -128,13 +176,18 @@ for the equivalent docs that preceded the KegSensor module).
 - Which Pi model specifically (4 / 5 / Zero 2 W) — affects the GPIO
   library choice for the C daemon (see above).
 - Whether to build a small interface PCB (breaking out the hub's RJ45
-  connection + OLED header(s) to the Pi's GPIO header) or wire it
-  directly on a protoboard/HAT.
-- I2C-multiplexer vs. SPI for the 5 per-tap OLEDs (see above), specific
-  OLED model/size, web dashboard framework, exact GPIO pin mapping for
-  both the shared-SCK + 5×DT scheme and the OLED bus, the physical
-  wiring path from KegStation out to each tap, and the on-disk
-  format/path for the readings file the C daemon writes.
+  connection + a USB-to-RS485 adapter/HAT to the Pi's GPIO header) or
+  wire it directly on a protoboard/HAT.
+- **KegDisplay specifics (see above)**: Modbus RTU vs. a custom protocol
+  for RS-485 node addressing; the actual RS-485-chain power supply
+  voltage (12V assumed for now, pending real cable-length/current
+  numbers) and each board's local regulator; specific OLED model/size
+  and Nano variant; the physical mounting method at/over each tap; and
+  the physical cable path from KegStation out to keg 1 (then daisy-
+  chained on from there, so only that first leg needs separate scoping).
+- Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
+  5×DT KegSensor scheme, and the on-disk format/path for the readings
+  file the C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
   case already built).
 - **Calibration front-end: keypad+OLED vs. web page vs. both — not yet
