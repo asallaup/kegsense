@@ -347,6 +347,24 @@ for px in (20, 50, 80, 110):
     silk_text("B", px + 5.08, 3, 1.0)
     silk_text("W", px + 10.16, 3, 1.0)
 
+# -- J5/J6 (HX711 header) pin labels --
+# J5/J6 are PinSocket_1x04_P2.54mm_Vertical: a single column, all 4 pins
+# stacked in Y at one X (2.54mm pitch), unlike J1-J4's horizontal row -
+# so labels go beside each pin (to the right), not above/below, since
+# there's no room between adjacent pins for a label at that pitch.
+# x=62.5/97.5 clears each footprint's own courtyard (right edge at
+# local x=1.75, i.e. world 61.75/96.75) with a small margin. y matches
+# each pin's own y exactly, so each label sits level with its pin.
+J5_PINS = ["E+", "E-", "A+", "A-"]
+for i, label in enumerate(J5_PINS):
+    silk_text(label, 62.5, 35 + i * 2.54, 0.9)
+# x=99.5, not 97.5 - the 3-letter labels (GND/SCK/VCC) are wide enough,
+# center-anchored, that their left edge clipped J6's own courtyard/
+# silkscreen outline at 97.5 (DRC: silk_overlap). 2mm further out clears it.
+J6_PINS = ["GND", "DT", "SCK", "VCC"]
+for i, label in enumerate(J6_PINS):
+    silk_text(label, 99.5, 35 + i * 2.54, 0.9)
+
 # -- silkscreen branding --
 # Silkscreen is a print layer, not copper - it doesn't need clearance
 # from tracks/lanes underneath, only from other silkscreen (reference

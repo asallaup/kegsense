@@ -135,6 +135,16 @@ own body, clear of both the edge and each connector's reference
 designator (checked via DRC's silk_overlap rule after placing it, not
 just eyeballed).
 
+J5 and J6 (the HX711 header pins) are labeled too — E+/E-/A+/A- and
+GND/DT/SCK/VCC respectively, one per pin, matching the Connectors table
+above. Both are `PinSocket_1x04_P2.54mm_Vertical`: a single column with
+all 4 pins stacked in Y at one X (2.54mm pitch), unlike J1-J4's
+horizontal row, so these labels go beside each pin (to the right) rather
+than above/below — there's no room between adjacent pins at that pitch
+for a label. J6's labels needed extra clearance from the footprint's own
+outline (GND/SCK/VCC are 3 characters, wide enough at their first
+position to clip it — DRC caught it, not eyeballing).
+
 Routing uses both copper layers, extensively. With J1-J4 unrotated, every
 one of their 12 pins (pin1/2/3 × 4 parts) sits at the exact same y=10 —
 unlike the rotated layout, where each pin *number* got a fixed y shared by
