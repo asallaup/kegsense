@@ -267,15 +267,19 @@ track(65, 42.62, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
 # Targets sorted by X: DT(142.94) < SCK(143.96) < VCC(144.98) < GND(146).
 # Give the FURTHEST-reaching target (GND) the SHALLOWEST lane and the
 # NEAREST target (DT) the DEEPEST lane - each drop then only travels
-# through lane-y's that are shallower than its own, and shallower lanes
-# never reach as far as a deeper target's X, so nothing crosses. Stub x's
-# (80/82/84/86, all west of J6 itself at x=95) are similarly ordered so
-# the short stub-to-lane drops near J6 don't cross each other's lanes
-# either. All B.Cu - it's otherwise empty over here.
-track(95, 35, 86, 35, "F.Cu", "GND")
-via(86, 35, "GND")
-track(86, 35, 86, 45, "B.Cu", "GND")
-track(86, 45, 149, 45, "B.Cu", "GND")
+# through lane-y's that are shallower than its own, and a drop only
+# avoids a shallower lane if the drop's own x sits *outside* that lane's
+# span. Stubs go east (toward J7, not doubling back west of J6 first) at
+# x=97/99/101/103, all clustered just past J6's own x=95 - since every
+# lane then extends the rest of the way east to ~140-150 anyway, the
+# stub ordering that keeps each drop outside the shallower lanes' spans
+# is the *reverse* of the west-side version: shallowest lane (GND) gets
+# the stub furthest from J6 (103, so its lane's span starts past every
+# other net's drop), deepest (DT) gets the one closest to J6 (97).
+track(95, 35, 103, 35, "F.Cu", "GND")
+via(103, 35, "GND")
+track(103, 35, 103, 45, "B.Cu", "GND")
+track(103, 45, 149, 45, "B.Cu", "GND")
 # Offset to x=149, not straight into pad1's own x=146 - that vertical
 # would run within 1.02mm of J7 pad2 (VCC, 144.98,78.46) for its whole
 # length, since pad1/pad2 are that close together - DRC-flagged
@@ -285,15 +289,15 @@ track(86, 45, 149, 45, "B.Cu", "GND")
 track(149, 45, 149, 81, "B.Cu", "GND")
 track(149, 81, 146, 81, "B.Cu", "GND")             # -> J7 pad1 (146,81)
 
-track(95, 42.62, 84, 42.62, "F.Cu", "VCC_3V3")
-via(84, 42.62, "VCC_3V3")
-track(84, 42.62, 84, 55, "B.Cu", "VCC_3V3")
-track(84, 55, 144.98, 55, "B.Cu", "VCC_3V3")
+track(95, 42.62, 101, 42.62, "F.Cu", "VCC_3V3")
+via(101, 42.62, "VCC_3V3")
+track(101, 42.62, 101, 55, "B.Cu", "VCC_3V3")
+track(101, 55, 144.98, 55, "B.Cu", "VCC_3V3")
 track(144.98, 55, 144.98, 78.46, "B.Cu", "VCC_3V3")  # -> J7 pad2 (144.98,78.46)
 
-track(95, 40.08, 82, 40.08, "F.Cu", "SCK")
-via(82, 40.08, "SCK")
-track(82, 40.08, 82, 65, "B.Cu", "SCK")
+track(95, 40.08, 99, 40.08, "F.Cu", "SCK")
+via(99, 40.08, "SCK")
+track(99, 40.08, 99, 65, "B.Cu", "SCK")
 # Same fix as GND above, offset the other way: straight into pad3's own
 # x=143.96 ran within 1.02mm of J7 pad2 (VCC) the whole way down. x=140
 # stays clear of VCC (144.98) and DT (142.94) alike - but that offset
@@ -302,15 +306,15 @@ track(82, 40.08, 82, 65, "B.Cu", "SCK")
 # x=140). Hopping to F.Cu for the rest of this net's approach (a
 # different layer than DT's B.Cu run) sidesteps that regardless of the
 # exact x chosen.
-via(82, 65, "SCK")
-track(82, 65, 140, 65, "F.Cu", "SCK")
+via(99, 65, "SCK")
+track(99, 65, 140, 65, "F.Cu", "SCK")
 track(140, 65, 140, 81, "F.Cu", "SCK")
 track(140, 81, 143.96, 81, "F.Cu", "SCK")          # -> J7 pad3 (143.96,81)
 
-track(95, 37.54, 80, 37.54, "F.Cu", "DT")
-via(80, 37.54, "DT")
-track(80, 37.54, 80, 74, "B.Cu", "DT")
-track(80, 74, 142.94, 74, "B.Cu", "DT")
+track(95, 37.54, 97, 37.54, "F.Cu", "DT")
+via(97, 37.54, "DT")
+track(97, 37.54, 97, 74, "B.Cu", "DT")
+track(97, 74, 142.94, 74, "B.Cu", "DT")
 track(142.94, 74, 142.94, 78.46, "B.Cu", "DT")     # -> J7 pad4 (142.94,78.46)
 
 # -- silkscreen branding --

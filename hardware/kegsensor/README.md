@@ -144,7 +144,13 @@ apart, so straight verticals into either one grazed the *other's*
 neighbor pad (VCC) for their whole length — fixed with an offset
 approach-and-jog into each pad's own y, and DT/SCK/GND's lanes had to be
 depth-ordered (matching the order of their target x's) so a deeper lane's
-horizontal run doesn't cross a shallower one's drop. See the comments in
+horizontal run doesn't cross a shallower one's drop. Each net's initial
+jog off of J6 goes east (toward J7), not west first — per explicit
+request — which flips *which* net needs the shallowest lane: since every
+lane then extends the rest of the way east to J7 regardless of where its
+own stub sits, the depth/stub-position pairing that avoids crossings
+turned out to be the mirror image of the west-jog version (shallowest
+lane ↔ stub furthest from J6, not closest). See the comments in
 `generate_pcb.py` for the exact reasoning behind each routing decision —
 several were only found by DRC catching a real short or clearance
 violation, not worked out by eye in advance.
