@@ -76,10 +76,10 @@ kicad-cli pcb export drill --format excellon --excellon-separate-th --excellon-u
 
 | Ref | Part | Pins |
 |-----|------|------|
-| J1 | Screw terminal, sensor "FL" corner | 1=E+ 2=E- 3=Signal |
-| J2 | Screw terminal, sensor "FR" corner | 1=E+ 2=E- 3=Signal |
-| J3 | Screw terminal, sensor "BR" corner | 1=E+ 2=E- 3=Signal |
-| J4 | Screw terminal, sensor "BL" corner | 1=E+ 2=E- 3=Signal |
+| J1 | Screw terminal, sensor "FL" corner | 1=E+ (Red) 2=E- (Black) 3=Signal (White) |
+| J2 | Screw terminal, sensor "FR" corner | 1=E+ (Red) 2=E- (Black) 3=Signal (White) |
+| J3 | Screw terminal, sensor "BR" corner | 1=E+ (Red) 2=E- (Black) 3=Signal (White) |
+| J4 | Screw terminal, sensor "BL" corner | 1=E+ (Red) 2=E- (Black) 3=Signal (White) |
 | J5 | Female header, HX711 load-cell side | 1=E+ 2=E- 3=A+ 4=A- |
 | J6 | Female header, HX711 digital/power side | 1=GND 2=DT 3=SCK 4=VCC |
 | J7 | RJ11 jack to hub (RJ14 6P4C) | 1=GND 2=VCC 3=SCK 4=DT |
@@ -124,6 +124,16 @@ J5; J7 (RJ11 to hub) is rotated 180° and placed flush with the board's
 connector belongs at the board edge as a matter of course, independent of
 the case (this board had a real bug once from *not* following that rule —
 J7 originally sat mid-board with no edge access at all; see git history).
+
+Each of J1-J4 has "R B W" silkscreened directly above its 3 pins, one
+letter per pin, matching the sensor lead colors in the table above (Red
+E+, Black E-, White Signal) — so wiring a sensor by color doesn't need
+the README open next to the board. Fixed pin order (1=R, 2=B, 3=W) on
+every connector regardless of which physical corner it's wired to.
+Positioned in the gap between the board's top edge and each connector's
+own body, clear of both the edge and each connector's reference
+designator (checked via DRC's silk_overlap rule after placing it, not
+just eyeballed).
 
 Routing uses both copper layers, extensively. With J1-J4 unrotated, every
 one of their 12 pins (pin1/2/3 × 4 parts) sits at the exact same y=10 —

@@ -333,6 +333,20 @@ track(97, 37.54, 97, 74, "B.Cu", "DT")
 track(97, 74, 142.94, 74, "B.Cu", "DT")
 track(142.94, 74, 142.94, 78.46, "B.Cu", "DT")     # -> J7 pad4 (142.94,78.46)
 
+# -- J1-J4 wire-color labels --
+# R/B/W above each of J1-J4's 3 pins, matching the documented sensor
+# lead convention (wiring.md: Red=E+, Black=E-, White=Signal) - pin1=R,
+# pin2=B, pin3=W, in that fixed order for every connector regardless of
+# which physical corner (FL/BR/FR/BL) it's wired to. Placed at y=3, above
+# the connector body (courtyard top at y=6) and clear of the board edge
+# (y=0) and of each connector's own reference designator (default
+# position ~y=5.35, i.e. between these labels and the connector) -
+# checked via DRC's silk_overlap rule, not just eyeballed.
+for px in (20, 50, 80, 110):
+    silk_text("R", px, 3, 1.0)
+    silk_text("B", px + 5.08, 3, 1.0)
+    silk_text("W", px + 10.16, 3, 1.0)
+
 # -- silkscreen branding --
 # Silkscreen is a print layer, not copper - it doesn't need clearance
 # from tracks/lanes underneath, only from other silkscreen (reference
