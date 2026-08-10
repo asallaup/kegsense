@@ -60,26 +60,27 @@ pcb_posts = [
 
 // ---- connector cutouts ----------------------------------------------------
 // J1-J4 sensor wires exit near the board's top edge (board-local x
-// 16-114, y 7.28-22.88 - the row's rotated courtyard span, see
-// generate_pcb.py) - cut the case's front wall (y=0, the wall the board's
-// own y=0 edge sits against) over that span with margin. Previously a
-// vertical column near the left edge with a left-wall cutout; moved when
-// J1-J4 became a horizontal row near the top edge instead.
-front_cut_x0 = board_x0 + 12;
-front_cut_x1 = board_x0 + 118;
+// 17.28-122.88 - the row's unrotated courtyard span: each part's
+// courtyard is 15.6mm wide, 30mm pitch, first at x=20 last at x=110, see
+// generate_pcb.py) - cut the case's front wall (y=0, the wall the
+// board's own y=0 edge sits against) over that span with margin.
+front_cut_x0 = board_x0 + 10;
+front_cut_x1 = board_x0 + 120;
 front_cut_z0 = floor_t + 2;
 front_cut_z1 = floor_t + wall_ht - 2;
 
-// J7 (RJ11 jack, RJ14 footprint) sits flush with the board's right edge,
-// rotated so its cable/plug face points +X - courtyard spans board-local
-// y=28.8-44.26 (see generate_pcb.py). Cut the RIGHT wall over that span
-// (with margin), not the top wall - J7 was originally positioned mid-board
-// with a top-wall cutout that didn't align with it at all; both the PCB
-// position and this cutout were fixed together (see git history).
-rj_cut_y0 = board_y0 + 26;
-rj_cut_y1 = board_y0 + 47;
-rj_cut_z0 = floor_t + 2;
-rj_cut_z1 = floor_t + wall_ht - 2;
+// J7 (RJ11 jack, RJ14 footprint) sits flush with the board's bottom edge
+// (y=90), rotated so its cable/plug face points +Y - its shell spans
+// board-local x=138.27-150.67 (see generate_pcb.py's J7 placement
+// comment - read back from actual DRC-reported pad/courtyard
+// coordinates, not assumed). Cut the BACK wall (y=outer_h, the wall the
+// board's own y=90 edge sits against) over that span with margin.
+// Previously flush with the right edge instead, with a right-wall
+// cutout - moved when J7 moved to the bottom edge per explicit request.
+back_cut_x0 = board_x0 + 131;
+back_cut_x1 = board_x0 + 148;
+back_cut_z0 = floor_t + 2;
+back_cut_z1 = floor_t + wall_ht - 2;
 
 $fn = 48;
 
@@ -120,35 +121,32 @@ module base() {
         // front-wall wire cutout for J1-J4
         translate([front_cut_x0, -1, front_cut_z0])
             cube([front_cut_x1 - front_cut_x0, wall + 2, front_cut_z1 - front_cut_z0]);
-        // right-wall cutout for J7 / RJ11 cable
-        translate([outer_w - wall - 1, rj_cut_y0, rj_cut_z0])
-            cube([wall + 2, rj_cut_y1 - rj_cut_y0, rj_cut_z1 - rj_cut_z0]);
-        // engraved branding, both lines on the back wall - moved here from
-        // the front wall once the front wall gained the J1-J4 cutout above
-        // (it's the widest cutout on the board, leaving no clean centered
-        // span for text). wall_text_back() already had the correct mirror
-        // fix worked out (see its own comment below) from when it was
-        // built but left unused.
-        wall_text_back("KegSensor", 5, text_z + 3.3, false);
-        wall_text_back("Sallaup Electronics", 2.6, text_z - 3, true);
+        // back-wall cutout for J7 / RJ11 cable
+        translate([back_cut_x0, outer_h - wall - 1, back_cut_z0])
+            cube([back_cut_x1 - back_cut_x0, wall + 2, back_cut_z1 - back_cut_z0]);
+        // engraved branding, both lines on the right wall - the one wall
+        // without a connector cutout now that J1-J4 (front) and J7 (back)
+        // both claim one. Previously on the back wall, before J7 moved
+        // there.
+        wall_text_right("KegSensor", 5, text_z + 3.3, false);
+        wall_text_right("Sallaup Electronics", 2.6, text_z - 3, true);
     }
 }
 
 // Engraved (recessed) branding on the back wall (y=outer_h) - the one
-// wall without a connector cutout, now that J1-J4 moved to a front-wall
-// cutout (previously the front wall was the plain one; see base()
-// above). 0.6mm deep into the 2mm wall (1.4mm remains - plenty strong),
-// centered vertically in the same safe z-band as the connector cutouts
-// (floor_t+2 .. floor_t+wall_ht-2) and horizontally clear of the corner
-// posts.
+// wall without a connector cutout, now that J1-J4 (front) and J7 (back)
+// both claim one. 0.6mm deep into the 2mm wall (1.4mm remains - plenty
+// strong), centered vertically in the same safe z-band as the connector
+// cutouts (floor_t+2 .. floor_t+wall_ht-2) and horizontally clear of the
+// corner posts.
 engrave_d = 0.6;
 text_z = floor_t + wall_ht / 2;
 
-// Getting these two right took two iterations of actually rendering and
+// Getting front/back right took two iterations of actually rendering and
 // checking (a true 2D orthographic projection of just the wall in
 // question, not eyeballing a 3D perspective view - that first misled me
 // into "fixing" this with a 180deg rotation, which turned out to swap the
-// wrong axis). Two different corrections are needed, for two different
+// wrong axis). Two different corrections were needed, for two different
 // reasons:
 //  - front wall: rotate([-90,0,0]) alone renders text upside down (letters
 //    vertically flipped) - mirror([0,1,0]) on the text before extrusion
@@ -159,6 +157,11 @@ text_z = floor_t + wall_ht / 2;
 //    pointing in world -X (they're facing the opposite direction), so
 //    text in unflipped +X order reads backwards *to them* even though the
 //    raw geometry isn't mirrored. mirror([1,0,0]) corrects for that.
+// wall_text_front/back are both unused now (branding moved to the right
+// wall below) but kept in case a wall needs text again later - each
+// still needs its own from-scratch verification if reused, not just
+// reasoning by analogy from another wall (that's exactly what went wrong
+// here the first time).
 module wall_text_front(msg, size, z = text_z, italic = false) {
     // front wall, exterior face at y=0 - cutter pokes out to y=-0.1 for a
     // clean boolean and goes engrave_d into the wall (+Y).
@@ -179,6 +182,31 @@ module wall_text_back(msg, size, z = text_z, italic = false) {
         rotate([90, 0, 0])
             linear_extrude(height = engrave_d + 0.1)
                 mirror([1, 0, 0])
+                    text(msg, size = size, halign = "center", valign = "center",
+                         font = str("Liberation Sans:style=", style));
+}
+
+// Right wall: exterior face at x=outer_w, engraving into the wall in -X.
+// Derived the same way as front/back (checking what each transform
+// actually does to a known point, not guessing) rather than assumed by
+// analogy - a right wall isn't just "front/back with axes swapped",
+// since the viewer's own "right" for someone standing to the box's right
+// (looking in -X, up=+Z) works out to world +Y, not a trivial relabeling.
+// rotate([90,0,90]) alone maps text-local X to world Y and text-local Y
+// to world Z correctly (verified against known rotate-about-X-axis and
+// rotate-about-Z-axis formulas applied in OpenSCAD's actual [x,y,z]
+// rotate order), but leaves the engrave/extrude direction pointing +X
+// (out of the wall, wrong way) - mirror([0,0,1]) on the extruded solid,
+// applied before that rotate, flips just that direction without
+// disturbing the already-correct X/Y mapping. Verified after the fact
+// with the same true-2D-cross-section method as front/back, not assumed
+// correct from the derivation alone.
+module wall_text_right(msg, size, z = text_z, italic = false) {
+    style = italic ? "Italic" : "Bold";
+    translate([outer_w + 0.1, outer_h / 2, z])
+        rotate([90, 0, 90])
+            mirror([0, 0, 1])
+                linear_extrude(height = engrave_d + 0.1)
                     text(msg, size = size, halign = "center", valign = "center",
                          font = str("Liberation Sans:style=", style));
 }

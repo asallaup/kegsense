@@ -87,29 +87,20 @@ def add_component(fp_text, lib_id, ref, x, y, angle, pad_nets, ref_at=None):
 
 # J1-J4 sensor terminals: horizontal row close to the board's top edge
 # (y=0), 30mm pitch, reordered physically (FL,BR,FR,BL) so diagonal pairs
-# (SIG_POS/SIG_NEG) are adjacent. Rotated -90deg (see J7's rotation-sign
-# comment below for why -90, not +90) so each part's 3 pins stack in Y
-# instead of spreading in X - without that, all 4 parts' pin1/pin2/pin3
-# would land on the exact same 3 y-values, and EXC_POS/EXC_NEG/SIG_POS/
-# SIG_NEG buses (below) would have no way to cross the row without
-# shorting each other. Rotated, each part's own pins share one x (so a
-# horizontal bus at a fixed y cleanly picks up "this pin, every part"),
-# mirroring how the pre-rotation vertical layout used a fixed x per pin.
-# ref_at=(5.05,-9,0): library default is (5.05,-4.65,0), which after the
-# -90 rotation above lands at local (4.65,5.05) - just outside the
-# unrotated courtyard but overlapping it post-rotation (DRC: silk_overlap
-# against the part's own silkscreen outline). Pushing further out along
-# the same local axis moves it to (9,5.05) post-rotation, clear of the
-# rotated courtyard (+-4mm) - confirmed via DRC, not just computed by hand.
-REF_AT = (5.05, -9, 0)
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J1", 20, 10, -90,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"}, REF_AT)   # FL
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J3", 50, 10, -90,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"}, REF_AT)   # BR
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J2", 80, 10, -90,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"}, REF_AT)   # FR
-add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J4", 110, 10, -90,
-              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"}, REF_AT)   # BL
+# (SIG_POS/SIG_NEG) are adjacent. Unrotated (angle=0, back to the library
+# default orientation) per explicit request - previously rotated -90 to
+# make the bus routing trivial (see git history), but that's a routing
+# convenience, not a requirement: unrotated works too, it just needs
+# lane+layer weaving instead of one straight bus per pin (see the J1-J4
+# routing comments below).
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J1", 20, 10, 0,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"})   # FL
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J3", 50, 10, 0,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_POS"})   # BR
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J2", 80, 10, 0,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"})   # FR
+add_component(FP_TERMINAL3, "TerminalBlock:TerminalBlock_bornier-3_P5.08mm", "J4", 110, 10, 0,
+              {"1": "EXC_POS", "2": "EXC_NEG", "3": "SIG_NEG"})   # BL
 
 # J5: HX711 load-cell side header
 add_component(FP_PINSOCKET4, "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical", "J5", 60, 35, 0,
@@ -119,21 +110,19 @@ add_component(FP_PINSOCKET4, "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_
 add_component(FP_PINSOCKET4, "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical", "J6", 95, 35, 0,
               {"1": "GND", "2": "DT", "3": "SCK", "4": "VCC_3V3"})
 
-# J7: RJ11-to-hub jack (RJ14 6P4C). Rotated -90deg and moved flush with the
-# board's right edge (x=155) so the cable is actually reachable from
-# outside the case - it was previously stranded ~14-27mm from the nearest
-# wall (see git history / README). Courtyard's -Y side is the cable/plug
-# face (mounting bosses + pads sit near the PCB-facing back at local
-# y=-2.3..2.54, the shell extends out to y=-9).
-#
-# KiCad's footprint rotation is the *opposite* sign of the standard math
-# convention (confirmed empirically: angle=+90 put pad2 at (148.54,33.98)
-# and pointed the cable face -X/left, i.e. into the board - the reverse of
-# both what the formula below predicts and what's wanted). angle=-90 is
-# the one that both matches these pad targets and points the cable face
-# +X/right, out through the board edge - verified via kicad-cli DRC
-# reporting actual pad coordinates, not assumed.
-add_component(FP_RJ11, "Connector_RJ:RJ14_Connfly_DS1133-S4_Horizontal", "J7", 146, 35, -90,
+# J7: RJ11-to-hub jack (RJ14 6P4C). Moved to the board's bottom edge
+# (y=90), per explicit request - previously flush with the right edge
+# (x=155). Rotated 180deg: at angle=0 the footprint's cable/plug face
+# points -Y (confirmed by the same empirical method as before - reading
+# back actual DRC-reported pad/courtyard coordinates, not assuming), i.e.
+# toward the *top* edge; 180deg flips that to +Y, toward the bottom edge.
+# y=81 (not 90) so the footprint's own shell, which extends ~9mm past its
+# reference point on the cable-face side, lands flush with y=90 rather
+# than poking through it - confirmed via DRC: pads land at (146,81),
+# (144.98,78.46), (143.96,81), (142.94,78.46), and its two NPTH mounting
+# bosses at (150.47,83.3)/(138.47,83.3), both comfortably inside the
+# board (which is why 81, not some other offset, was picked here).
+add_component(FP_RJ11, "Connector_RJ:RJ14_Connfly_DS1133-S4_Horizontal", "J7", 146, 81, 180,
               {"1": "GND", "2": "VCC_3V3", "3": "SCK", "4": "DT"})
 
 tracks_out = []
@@ -174,110 +163,161 @@ def via(x, y, net_name):
 \t\t(uuid "{new_uuid()}")
 \t)''')
 
-# -- J1-J4 <-> J5 bus (F.Cu horizontal buses, B.Cu diagonal jogs via vias) --
-# Rotated J1-J4 (see placement comment above) put each part's own pins on
-# one shared x, at fixed y offsets 0/5.08/10.16 from its placement y=10 -
-# i.e. pin1 of every part sits at y=10, pin2 at y=15.08, pin3 at y=20.16,
-# regardless of which part. So "pin N, every part" is a straight
-# horizontal F.Cu run at that fixed y, exactly mirroring how the
-# pre-rotation layout used a fixed x per pin. SIG_POS/SIG_NEG share pin3's
-# y=20.16 but stay on disjoint x-ranges (J1+J3 vs J2+J4), same trick the
-# old layout used with disjoint y-ranges at a shared x.
-# Tap points all kept at x<=85, i.e. clear of the J6<->J7 corridor (which
-# starts at x=93 - see VCC_3V3's B.Cu vertical below) - an earlier version
-# of this used tap x=95/100, and those diagonals cut straight through that
-# corridor's B.Cu traces, DRC-flagged as both track-crossing and solder
-# mask bridge shorts. Also chosen (30 < 85, 35 < 82) so, combined with the
-# target y ordering at J5 (35 < 37.54 < 40.08 < 42.62), the 4 diagonals
-# fan in without crossing each other (verified via DRC, not just by eye).
-track(20, 10, 110, 10, "F.Cu", "EXC_POS")           # pin1: J1,J3,J2,J4
-via(30, 10, "EXC_POS")
-track(30, 10, 60, 35, "B.Cu", "EXC_POS")          # -> J5 pad1 (60,35)
+# -- J1-J4 <-> J5 bus --
+# J1-J4 are unrotated (angle=0, see placement comment above), so ALL 12
+# sensor-side pins - pin1/2/3 of all 4 parts - sit on the exact same
+# y=10 (only x differs, both by part and by pin-within-part). Unlike the
+# rotated layout (where each pin number got its own fixed y, so "pin N,
+# every part" was a trivial straight bus), nothing here is a straight
+# line without touching another net - every net needs its own "lane"
+# below the row (a dedicated y) plus vertical drops from each of its pins
+# down to that lane, and since the 4 nets' pin x's are interleaved across
+# the same 20-110 span, a drop for a deeper-lane net inevitably passes
+# through a shallower net's lane y at some point along that span.
+# Two nets (EXC_POS/EXC_NEG) get the full row width, so they're kept on
+# separate copper layers entirely (F.Cu / B.Cu) - crossing a different
+# layer isn't a short. SIG_POS/SIG_NEG only span half the row each, but
+# still need to get past THIRD level down past both of the above, so
+# their drops explicitly hop layers (via) at each crossing rather than
+# relying on a single layer choice.
+EXC_POS_LANE_Y = 14
+EXC_NEG_LANE_Y = 18
+SIG_LANE_Y = 22
 
-track(20, 15.08, 110, 15.08, "F.Cu", "EXC_NEG")     # pin2: J1,J3,J2,J4
-# Tap at x=62 (not a direct diagonal) - two earlier attempts both failed
-# DRC: x=85's diagonal cut through J2's own pad3 (80,20.16), and a
-# straight diagonal from x=65 swung within ~0.55mm of J5's own pad1
-# (60,35) on its way in to pad2, since pad1/pad2 are only 2.54mm apart.
-# This L-shape - a near-vertical run at x=62 (2mm clear of pad1, still
-# clear of SIG_NEG's diagonal further right - see below) then a short
-# final horizontal AT pad2's own y=37.54 - never gets closer than 2mm to
-# pad1 at any point, unlike a diagonal that necessarily passes close to
-# it en route to the adjacent pad.
-via(62, 15.08, "EXC_NEG")
-track(62, 15.08, 62, 37.54, "B.Cu", "EXC_NEG")
-track(62, 37.54, 60, 37.54, "B.Cu", "EXC_NEG")    # -> J5 pad2 (60,37.54)
+# EXC_POS (pin1: J1,J3,J2,J4 @ x=20,50,80,110,y=10) - F.Cu throughout,
+# lane y=14 (shallowest - nothing above it to dodge).
+for x in (20, 50, 80, 110):
+    track(x, 10, x, EXC_POS_LANE_Y, "F.Cu", "EXC_POS")
+track(20, EXC_POS_LANE_Y, 110, EXC_POS_LANE_Y, "F.Cu", "EXC_POS")
+# Tap at x=65 (not 60, J5's own x, and not a direct diagonal) - a
+# diagonal toward (60,35) swept through x=30.16-60.16 at y=22 along the
+# way, cutting straight across SIG_POS's lane (below) - DRC-flagged
+# tracks_crossing. x=65 sits clear of both SIG_POS's (30.16-60.16) and
+# SIG_NEG's (90.16-120.16) lane spans, so the vertical here can't cross
+# either; a short final horizontal at J5's own pad row (y=35) closes the
+# last 5mm into the pad.
+track(65, EXC_POS_LANE_Y, 65, 35, "F.Cu", "EXC_POS")
+track(65, 35, 60, 35, "F.Cu", "EXC_POS")          # -> J5 pad1 (60,35)
 
-track(20, 20.16, 50, 20.16, "F.Cu", "SIG_POS")      # pin3: J1+J3 only
-via(35, 20.16, "SIG_POS")
-track(35, 20.16, 60, 40.08, "B.Cu", "SIG_POS")    # -> J5 pad3 (60,40.08)
+# EXC_NEG (pin2 @ x=25.08,55.08,85.08,115.08,y=10) - B.Cu throughout, own
+# lane y=18. Different layer than EXC_POS, so their drops/lanes freely
+# cross in plan view without shorting.
+for x in (25.08, 55.08, 85.08, 115.08):
+    track(x, 10, x, EXC_NEG_LANE_Y, "B.Cu", "EXC_NEG")
+track(25.08, EXC_NEG_LANE_Y, 115.08, EXC_NEG_LANE_Y, "B.Cu", "EXC_NEG")
+# Final approach offset to x=63 (not 60) then a short horizontal AT
+# pad2's own y=37.54 - a straight line into x=60 would pass close by
+# J5's pad1 (60,35, a different net), same lesson as the previous
+# rotated-layout attempt that failed DRC for exactly this reason. Stays
+# on B.Cu (not F.Cu) throughout - EXC_POS's approach also passes near
+# x=63-65 on its own way into J5, and B.Cu is otherwise clear here.
+track(63, EXC_NEG_LANE_Y, 63, 37.54, "B.Cu", "EXC_NEG")
+track(63, 37.54, 60, 37.54, "B.Cu", "EXC_NEG")    # -> J5 pad2 (60,37.54)
 
-track(80, 20.16, 110, 20.16, "F.Cu", "SIG_NEG")     # pin3: J2+J4 only
-via(82, 20.16, "SIG_NEG")
-track(82, 20.16, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
+# SIG_POS (pin3, J1+J3 only @ x=30.16,60.16,y=10) and SIG_NEG (J2+J4 only
+# @ x=90.16,120.16,y=10) both need to get past EXC_POS's F.Cu lane (14)
+# *and* EXC_NEG's B.Cu lane (18) to reach their own lane (22) - one via
+# hop per crossing (F.Cu -> B.Cu -> F.Cu), landing back on F.Cu exactly
+# at the SIG lane so both nets can share y=22 on the same layer (their
+# x-ranges, 30.16-60.16 vs 90.16-120.16, stay disjoint, so sharing both
+# the layer and the y is safe - same trick used repeatedly elsewhere in
+# this board).
+for x in (30.16, 60.16, 90.16, 120.16):
+    net = "SIG_POS" if x < 90 else "SIG_NEG"
+    track(x, 10, x, 13, "F.Cu", net)
+    via(x, 13, net)
+    track(x, 13, x, 17, "B.Cu", net)
+    via(x, 17, net)
+    track(x, 17, x, SIG_LANE_Y, "F.Cu", net)
+track(30.16, SIG_LANE_Y, 60.16, SIG_LANE_Y, "F.Cu", "SIG_POS")
+track(90.16, SIG_LANE_Y, 120.16, SIG_LANE_Y, "F.Cu", "SIG_NEG")
+# L-shaped final approaches (vertical at a tap x, then horizontal AT the
+# exact target y) rather than direct diagonals - a diagonal from this
+# lane toward J5 passes within ~1.5mm of the *adjacent* J5 pad on the
+# way to its own target, tight enough to risk the same kind of short as
+# EXC_NEG's approach above; an L-shape only ever touches its own pad's y.
+via(45, SIG_LANE_Y, "SIG_POS")
+track(45, SIG_LANE_Y, 45, 40.08, "B.Cu", "SIG_POS")
+track(45, 40.08, 60, 40.08, "B.Cu", "SIG_POS")    # -> J5 pad3 (60,40.08)
+via(105, SIG_LANE_Y, "SIG_NEG")
+# Detours up to y=30 (above every J6 pad/stub - all at y>=35) and over to
+# x=65 before dropping to pad4's own y=42.62, rather than one straight
+# horizontal at y=42.62 - that direct line crosses x=80-95 at that exact
+# y, right where the J6<->J7 corridor's stub-to-lane drops live. Tried
+# moving just that final leg to F.Cu instead (a different layer than
+# those B.Cu drops) - fixed that conflict but created a new one: F.Cu at
+# y=42.62 is exactly VCC_3V3's own stub-to-J6 row. Rather than keep
+# hunting for a clear layer at a busy y, this avoids the busy y (35-42.62,
+# where every J6 pad/stub sits) entirely, so the layer choice (stayed on
+# B.Cu throughout) stops mattering.
+track(105, SIG_LANE_Y, 105, 30, "B.Cu", "SIG_NEG")
+track(105, 30, 65, 30, "B.Cu", "SIG_NEG")
+track(65, 30, 65, 42.62, "B.Cu", "SIG_NEG")
+track(65, 42.62, 60, 42.62, "B.Cu", "SIG_NEG")    # -> J5 pad4 (60,42.62)
 
-# -- J6 <-> J7 (J7 now at (146,35) rotated 90deg - see J7 comment above)
-# Pads: pad1=GND(146,35) pad2=VCC(143.46,36.02) pad3=SCK(146,37.04)
-# pad4=DT(143.46,38.06). NPTH mounting holes at (148.3,30.53) and
-# (148.3,42.53).
+# -- J6 <-> J7 (J7 now at the bottom edge, (146,81) rotated 180 - see J7
+# comment above). Pads: pad1=GND(146,81) pad2=VCC(144.98,78.46)
+# pad3=SCK(143.96,81) pad4=DT(142.94,78.46) - a tight cluster again, same
+# character as the previous right-edge position, just transposed:
+# GND/SCK now share a Y (81) instead of an X, and VCC/DT share the other
+# Y (78.46).
 #
-# All 4 nets get a short F.Cu stub near J6 (own source y, distinct x so
-# the stubs don't cross each other) then a via onto B.Cu, which is
-# otherwise completely empty over here - so the only remaining constraint
-# is staying clear of J7's own tightly-packed pads/holes, not other
-# traces. GND/SCK (sharing target x=146) approach from the upper-right,
-# outside the board edge, then a short final horizontal into the pad from
-# the right - clean because that direction has no other pads in the way.
-# DT/VCC (sharing target x=143.46) approach as a vertical from below/above
-# respectively, since their target-y order (VCC=36.02 < DT=38.06) keeps
-# those two vertical spans non-overlapping.
-# GND and SCK share target x=146 (2.04mm apart in y) - approach one from
-# above, the other from below, so their final verticals (both at x=146)
-# occupy non-overlapping y-ranges and can share that x safely. Both stay
-# >=2.3mm from J7's NPTH holes at (148.3,30.53)/(148.3,42.53) - tight but
-# clear (need 1.875mm).
-# Lane y=25, not the original 20 - y=20 ran only 0.16mm from J4's new
-# pad3 (110,20.16) once J1-J4 moved up near the top edge (real
-# copper-to-copper overlap, not just a warning: DRC flagged both
-# shorting_items and solder_mask_bridge). y=25 clears J1-J4's courtyard
-# (bottom edge at y=22.88) and the row's own bus/diagonal routing (all
-# at y<=20.16), with nothing else routed through this gap before J5/J6.
-track(95, 35, 97, 35, "F.Cu", "GND")
-via(97, 35, "GND")
-track(97, 35, 97, 25, "B.Cu", "GND")
-track(97, 25, 146, 25, "B.Cu", "GND")
-track(146, 25, 146, 35, "B.Cu", "GND")             # -> J7 pad1 (146,35), from above
+# Same "keep each net's own lane, order lane depth to match target
+# order" trick as J1-J4 above, applied to the depth (Y) axis this time.
+# Targets sorted by X: DT(142.94) < SCK(143.96) < VCC(144.98) < GND(146).
+# Give the FURTHEST-reaching target (GND) the SHALLOWEST lane and the
+# NEAREST target (DT) the DEEPEST lane - each drop then only travels
+# through lane-y's that are shallower than its own, and shallower lanes
+# never reach as far as a deeper target's X, so nothing crosses. Stub x's
+# (80/82/84/86, all west of J6 itself at x=95) are similarly ordered so
+# the short stub-to-lane drops near J6 don't cross each other's lanes
+# either. All B.Cu - it's otherwise empty over here.
+track(95, 35, 86, 35, "F.Cu", "GND")
+via(86, 35, "GND")
+track(86, 35, 86, 45, "B.Cu", "GND")
+track(86, 45, 149, 45, "B.Cu", "GND")
+# Offset to x=149, not straight into pad1's own x=146 - that vertical
+# would run within 1.02mm of J7 pad2 (VCC, 144.98,78.46) for its whole
+# length, since pad1/pad2 are that close together - DRC-flagged
+# clearance (0.12mm actual vs 0.2mm required). x=149 stays clear of
+# every J7 pad and (since it stops at y=81, short of y=82.15) clear of
+# the NPTH mounting hole at (150.47,83.3) too.
+track(149, 45, 149, 81, "B.Cu", "GND")
+track(149, 81, 146, 81, "B.Cu", "GND")             # -> J7 pad1 (146,81)
 
-# lane y=52, not 45 - DT's escape/approach verticals occupy y=37.54-50 at
-# x=101/143.46, both within this horizontal's x-span, so 45 crossed them.
-track(95, 40.08, 99, 40.08, "F.Cu", "SCK")
-via(99, 40.08, "SCK")
-track(99, 40.08, 99, 52, "B.Cu", "SCK")
-track(99, 52, 146, 52, "B.Cu", "SCK")
-track(146, 52, 146, 37.04, "B.Cu", "SCK")          # -> J7 pad3 (146,37.04), from below
+track(95, 42.62, 84, 42.62, "F.Cu", "VCC_3V3")
+via(84, 42.62, "VCC_3V3")
+track(84, 42.62, 84, 55, "B.Cu", "VCC_3V3")
+track(84, 55, 144.98, 55, "B.Cu", "VCC_3V3")
+track(144.98, 55, 144.98, 78.46, "B.Cu", "VCC_3V3")  # -> J7 pad2 (144.98,78.46)
 
-track(95, 37.54, 101, 37.54, "F.Cu", "DT")
-via(101, 37.54, "DT")
-track(101, 37.54, 101, 50, "B.Cu", "DT")
-track(101, 50, 143.46, 50, "B.Cu", "DT")
-track(143.46, 50, 143.46, 38.06, "B.Cu", "DT")     # -> J7 pad4 (143.46,38.06)
+track(95, 40.08, 82, 40.08, "F.Cu", "SCK")
+via(82, 40.08, "SCK")
+track(82, 40.08, 82, 65, "B.Cu", "SCK")
+# Same fix as GND above, offset the other way: straight into pad3's own
+# x=143.96 ran within 1.02mm of J7 pad2 (VCC) the whole way down. x=140
+# stays clear of VCC (144.98) and DT (142.94) alike - but that offset
+# vertical, going from y=65 down to 81, now crosses DT's own B.Cu
+# horizontal (which runs at y=74 all the way out to x=142.94, well past
+# x=140). Hopping to F.Cu for the rest of this net's approach (a
+# different layer than DT's B.Cu run) sidesteps that regardless of the
+# exact x chosen.
+via(82, 65, "SCK")
+track(82, 65, 140, 65, "F.Cu", "SCK")
+track(140, 65, 140, 81, "F.Cu", "SCK")
+track(140, 81, 143.96, 81, "F.Cu", "SCK")          # -> J7 pad3 (143.96,81)
 
-# VCC stubs LEFT (x=93, not right) so its long vertical doesn't sit inside
-# GND's/SCK's lead-in horizontals' x-range (97-146) - avoids crossing them.
-track(95, 42.62, 93, 42.62, "F.Cu", "VCC_3V3")
-via(93, 42.62, "VCC_3V3")
-track(93, 42.62, 93, 12, "B.Cu", "VCC_3V3")
-track(93, 12, 143.46, 12, "B.Cu", "VCC_3V3")
-# GND's lead-in horizontal is at y=20, clear of this y=12 run; the final
-# vertical below still needs F.Cu though, since it crosses GND's y=20 and
-# SCK's y=45 horizontals otherwise (both span across x=143.46).
-via(143.46, 12, "VCC_3V3")
-track(143.46, 12, 143.46, 36.02, "F.Cu", "VCC_3V3")  # -> J7 pad2 (143.46,36.02)
+track(95, 37.54, 80, 37.54, "F.Cu", "DT")
+via(80, 37.54, "DT")
+track(80, 37.54, 80, 74, "B.Cu", "DT")
+track(80, 74, 142.94, 74, "B.Cu", "DT")
+track(142.94, 74, 142.94, 78.46, "B.Cu", "DT")     # -> J7 pad4 (142.94,78.46)
 
 # -- silkscreen branding --
-# Right side only (an earlier left-side copy, between J2 and J4, was
-# removed) - large open area right of J5/below the J6<->J7 routing (that
-# routing stays y<=52; nothing else occupies x=60-155, y=52-90).
+# Silkscreen is a print layer, not copper - it doesn't need clearance
+# from tracks/lanes underneath, only from other silkscreen (reference
+# designators, board edge). This spot stays clear of J1-J4/J5/J6/J7's own
+# reference designators.
 silk_text("KegSensor", 100, 58, 2.2)
 silk_text("Sallaup Electronics", 100, 62, 1.2)
 silk_text("Rev A", 100, 68, 2.2)
