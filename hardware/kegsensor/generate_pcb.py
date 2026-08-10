@@ -369,12 +369,14 @@ for i, label in enumerate(J6_PINS):
 # -- silkscreen branding --
 # Silkscreen is a print layer, not copper - it doesn't need clearance
 # from tracks/lanes underneath, only from other silkscreen (reference
-# designators, board edge). This spot stays clear of J1-J4/J5/J6/J7's own
-# reference designators.
-silk_text("KegSensor", 100, 58, 2.2)
-silk_text("Sallaup Electronics", 100, 62, 1.2)
-silk_text("Rev A", 100, 68, 2.2)
-silk_text("2026", 100, 72, 1.5)
+# designators, board edge). x=50, not 100 - per explicit request, moved
+# left into the large empty area below J1-J3 (nothing else routes or
+# labels down here: J5's pin labels stay above y=43, and the J6<->J7
+# routing corridor stays east of x=80).
+silk_text("KegSensor", 50, 58, 2.2)
+silk_text("Sallaup Electronics", 50, 62, 1.2)
+silk_text("Rev A", 50, 68, 2.2)
+silk_text("2026", 50, 72, 1.5)
 
 tmpl = open(TEMPLATE_PCB).read()
 layers_block = extract_balanced(tmpl, tmpl.index("\t(layers"))
