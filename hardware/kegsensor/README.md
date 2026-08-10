@@ -139,10 +139,11 @@ J5 and J6 (the HX711 header pins) are labeled too — E+/E-/A+/A- and
 GND/DT/SCK/VCC respectively, one per pin, matching the Connectors table
 above. Both are `PinSocket_1x04_P2.54mm_Vertical`: a single column with
 all 4 pins stacked in Y at one X (2.54mm pitch), unlike J1-J4's
-horizontal row, so these labels go beside each pin (to the right) rather
-than above/below — there's no room between adjacent pins at that pitch
-for a label. J6's labels needed extra clearance from the footprint's own
-outline (GND/SCK/VCC are 3 characters, wide enough at their first
+horizontal row, so these labels go beside each pin rather than
+above/below — there's no room between adjacent pins at that pitch for a
+label. J5's sit on the left, J6's on the right (per explicit request —
+opposite sides). J6's labels needed extra clearance from the footprint's
+own outline (GND/SCK/VCC are 3 characters, wide enough at their first
 position to clip it — DRC caught it, not eyeballing).
 
 Routing uses both copper layers, extensively. With J1-J4 unrotated, every

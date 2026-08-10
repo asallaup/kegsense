@@ -350,17 +350,18 @@ for px in (20, 50, 80, 110):
 # -- J5/J6 (HX711 header) pin labels --
 # J5/J6 are PinSocket_1x04_P2.54mm_Vertical: a single column, all 4 pins
 # stacked in Y at one X (2.54mm pitch), unlike J1-J4's horizontal row -
-# so labels go beside each pin (to the right), not above/below, since
-# there's no room between adjacent pins for a label at that pitch.
-# x=62.5/97.5 clears each footprint's own courtyard (right edge at
-# local x=1.75, i.e. world 61.75/96.75) with a small margin. y matches
-# each pin's own y exactly, so each label sits level with its pin.
+# so labels go beside each pin, not above/below, since there's no room
+# between adjacent pins for a label at that pitch. y matches each pin's
+# own y exactly, so each label sits level with its pin.
+# J5 on the left (x=57, clearing its courtyard's left edge at local
+# x=-1.8, i.e. world 58.2) - per explicit request, opposite side from J6.
 J5_PINS = ["E+", "E-", "A+", "A-"]
 for i, label in enumerate(J5_PINS):
-    silk_text(label, 62.5, 35 + i * 2.54, 0.9)
-# x=99.5, not 97.5 - the 3-letter labels (GND/SCK/VCC) are wide enough,
-# center-anchored, that their left edge clipped J6's own courtyard/
-# silkscreen outline at 97.5 (DRC: silk_overlap). 2mm further out clears it.
+    silk_text(label, 57, 35 + i * 2.54, 0.9)
+# J6 on the right, x=99.5 not 97.5 - the 3-letter labels (GND/SCK/VCC)
+# are wide enough, center-anchored, that their left edge clipped J6's own
+# courtyard/silkscreen outline at 97.5 (DRC: silk_overlap). 2mm further
+# out clears it.
 J6_PINS = ["GND", "DT", "SCK", "VCC"]
 for i, label in enumerate(J6_PINS):
     silk_text(label, 99.5, 35 + i * 2.54, 0.9)
