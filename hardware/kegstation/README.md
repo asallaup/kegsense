@@ -130,8 +130,10 @@ for the equivalent docs that preceded the KegSensor module).
   wire it directly on a protoboard/HAT.
 - **KegDisplay specifics** — see
   [`../kegdisplay/README.md`](../kegdisplay/README.md)'s own Still Open
-  section (protocol on top of RS-485, power supply voltage, KiCad
-  project, physical mounting, exact part numbers).
+  section (power supply voltage, KiCad project, physical mounting, exact
+  part numbers, status-LED heartbeat timeout). Protocol is decided
+  (Modbus RTU, KegStation as master) — its poll interval still needs
+  picking, which also sets KegDisplay's heartbeat-LED timeout.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
   5×DT KegSensor scheme, and the on-disk format/path for the readings
   file the C daemon writes.
