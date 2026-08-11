@@ -23,13 +23,16 @@ def box(x, y, w, h, label, fc="#f4f4f4", ec="#333333", fontsize=10, weight="bold
 def pin_box(x, y, w, h, title, pins, fc="#ffffff", ec="#555555"):
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.25",
                                  linewidth=1.4, edgecolor=ec, facecolor=fc, zorder=3))
-    ax.text(x + w / 2, y + h + 1.6, title, ha="center", fontsize=8.5, fontweight="bold", color=ec, zorder=4)
+    ax.text(x + w / 2, y + h + 1.8, title, ha="center", fontsize=9.5, fontweight="bold", color=ec, zorder=4)
     n = len(pins)
     ys = []
+    # fontsize=11, bold - was 7/normal, easy to lose (e.g. A+/A- on J5) once
+    # the image is scaled down to a typical inline viewing size, not just at
+    # full resolution.
     for i, p in enumerate(pins):
         py = y + h - (i + 0.5) * (h / n)
         ys.append(py)
-        ax.text(x + w / 2, py, p, ha="center", va="center", fontsize=7, zorder=4)
+        ax.text(x + w / 2, py, p, ha="center", va="center", fontsize=11, fontweight="bold", zorder=4)
     return ys
 
 # ============ 4 sensors ============
