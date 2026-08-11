@@ -55,9 +55,14 @@ for label, ycenter, ref in sensors:
     sy = ycenter
     box(4, sy - 6, 26, 12, label, fc="#fff7e6", ec="#8a6d00", fontsize=9)
     box(term_x, sy - 6, term_w, 12, f"{ref}\nE+  E-  Sig", fc="#ffffff", ec="#555555", fontsize=7.5, weight="normal")
-    ax.plot([30, term_x], [sy + 3.2, sy + 3.2], color=WIRE["Red"], linewidth=2, zorder=2)
-    ax.plot([30, term_x], [sy, sy], color=WIRE["Black"], linewidth=2, zorder=2)
-    ax.plot([30, term_x], [sy - 3.2, sy - 3.2], color=WIRE["White"], linewidth=2, zorder=2)
+    ax.plot([30, term_x], [sy + 3.2, sy + 3.2], color=WIRE["Red"], linewidth=1.8, zorder=2)
+    ax.plot([30, term_x], [sy, sy], color=WIRE["Black"], linewidth=1.8, zorder=2)
+    # Signal lead styled to match its own downstream path all the way to
+    # J5 (dotted for J1/J3 -> A+, dashed for J2/J4 -> A-), not just solid
+    # like E+/E- - so the same wire reads as the same wire for its whole
+    # run, not just from J1-J4 onward.
+    sig_style = (0, (1, 1.4)) if ref in ("J1", "J3") else (0, (4, 2))
+    ax.plot([30, term_x], [sy - 3.2, sy - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=sig_style, zorder=2)
 
 ax.text(17, 90, "4x half-bridge load cell sensors\n(one per keg-platform corner)",
         ha="center", fontsize=9.5, color="#8a6d00")
@@ -68,12 +73,19 @@ j5_ys = pin_box(j5_x, j5_y, j5_w, j5_h, "J5", ["E+", "E-", "A+", "A-"])
 
 bx1, bx2, bx3, bx4 = term_x + term_w + 2, term_x + term_w + 4.2, term_x + term_w + 6.4, term_x + term_w + 8.6
 for label, ycenter, ref in sensors:
-    ax.plot([term_x + term_w, bx1], [ycenter + 3.2, ycenter + 3.2], color=WIRE["Red"], linewidth=1.4, zorder=2)
-    ax.plot([term_x + term_w, bx2], [ycenter, ycenter], color=WIRE["Black"], linewidth=1.4, zorder=2)
-ax.plot([bx1, bx1], [15, 81], color=WIRE["Red"], linewidth=1.4, zorder=2)
-ax.plot([bx1, j5_x], [j5_ys[0], j5_ys[0]], color=WIRE["Red"], linewidth=1.4, zorder=2)
-ax.plot([bx2, bx2], [15, 81], color=WIRE["Black"], linewidth=1.4, zorder=2)
-ax.plot([bx2, j5_x], [j5_ys[1], j5_ys[1]], color=WIRE["Black"], linewidth=1.4, zorder=2)
+    ax.plot([term_x + term_w, bx1], [ycenter + 3.2, ycenter + 3.2], color=WIRE["Red"], linewidth=1.8, zorder=2)
+    ax.plot([term_x + term_w, bx2], [ycenter, ycenter], color=WIRE["Black"], linewidth=1.8, zorder=2)
+# [15, 81] was a rough guess, not the real tap points - overshot past
+# J4's actual corner at the bottom and past J1's at the top (both wires),
+# making the bus look like it kept going somewhere rather than
+# terminating exactly at its last connection. Computed from the actual
+# sensor list instead, per pin.
+red_taps = [yc + 3.2 for _, yc, _ in sensors]
+black_taps = [yc for _, yc, _ in sensors]
+ax.plot([bx1, bx1], [min(red_taps), max(red_taps)], color=WIRE["Red"], linewidth=1.8, zorder=2)
+ax.plot([bx1, j5_x], [j5_ys[0], j5_ys[0]], color=WIRE["Red"], linewidth=1.8, zorder=2)
+ax.plot([bx2, bx2], [min(black_taps), max(black_taps)], color=WIRE["Black"], linewidth=1.8, zorder=2)
+ax.plot([bx2, j5_x], [j5_ys[1], j5_ys[1]], color=WIRE["Black"], linewidth=1.8, zorder=2)
 
 ax.plot([term_x + term_w, bx3], [78 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (1, 1.4)), zorder=2)
 ax.plot([term_x + term_w, bx3], [58 - 3.2, 58 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (1, 1.4)), zorder=2)
@@ -100,7 +112,7 @@ ax.text(pcb_x0 + pcb_w / 2, 85.5, "EXC_POS / EXC_NEG bus all 4 sensors  •  SIG
 hx_x, hx_y, hx_w, hx_h = j5_x + 16, 35, 26, 30
 box(hx_x, hx_y, hx_w, hx_h, "HX711\nbreakout\nmodule", fc="#e8f6ec", ec="#1a7a34", fontsize=9.5)
 for py in j5_ys:
-    ax.plot([j5_x + j5_w, hx_x], [py, hx_y + hx_h * 0.7], color="#1a7a34", linewidth=0.8, zorder=1, alpha=0.6)
+    ax.plot([j5_x + j5_w, hx_x], [py, hx_y + hx_h * 0.7], color="#1a7a34", linewidth=1.8, zorder=1, alpha=0.6)
 
 # J6 drawn as GND/VCC/SCK/DT here (not the PCB's actual silkscreen pin
 # order, which is GND/DT/SCK/VCC - see the Connectors table in README.md
@@ -112,7 +124,7 @@ for py in j5_ys:
 j6_x, j6_y, j6_w, j6_h = hx_x + hx_w + 16, 40, 11, 20
 j6_ys = pin_box(j6_x, j6_y, j6_w, j6_h, "J6", ["GND", "VCC", "SCK", "DT"])
 for py in j6_ys:
-    ax.plot([hx_x + hx_w, j6_x], [hx_y + hx_h * 0.3, py], color="#1a7a34", linewidth=0.8, zorder=1, alpha=0.6)
+    ax.plot([hx_x + hx_w, j6_x], [hx_y + hx_h * 0.3, py], color="#1a7a34", linewidth=1.8, zorder=1, alpha=0.6)
 ax.text(hx_x + hx_w / 2, hx_y - 3, "(HX711 plugs into J5 for analog leads, J6 for digital/power)",
         ha="center", fontsize=7.5, color="#1a7a34")
 
@@ -141,8 +153,8 @@ cable_rows = [("Black", "GND"), ("Red", "VCC (3.3V, in)"), ("Green", "SCK (in, s
 cable_ys_from = [j7_ys[j7_pins.index("GND")], j7_ys[j7_pins.index("VCC")], j7_ys[j7_pins.index("SCK")], j7_ys[j7_pins.index("DT")]]
 spread_ys = [j7_y + j7_h - (i + 0.5) * (j7_h / 4) for i in range(4)]
 for (cname, sig), y7, ys in zip(cable_rows, cable_ys_from, spread_ys):
-    ax.plot([j7_x + j7_w, cable_x], [y7, ys], color=WIRE[cname], linewidth=1.4, zorder=2)
-    ax.plot([cable_x, hub_x], [ys, ys], color=WIRE[cname], linewidth=2.2, zorder=2)
+    ax.plot([j7_x + j7_w, cable_x], [y7, ys], color=WIRE[cname], linewidth=1.8, zorder=2)
+    ax.plot([cable_x, hub_x], [ys, ys], color=WIRE[cname], linewidth=1.8, zorder=2)
     ax.text((cable_x + hub_x) / 2, ys + 1.3, f"{cname} = {sig}",
             ha="center", fontsize=7.3, color=WIRE[cname] if cname != "White" else "#777777", zorder=4)
 
