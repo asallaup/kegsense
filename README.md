@@ -55,6 +55,9 @@ outside the keezer, is the only part with Wi-Fi (for the dashboard).
   checklist).
 - [`hardware/kegstation/`](hardware/kegstation/) — KegStation (central
   unit) planning doc: decisions made so far and what's still open.
+- [`hardware/kegdisplay/`](hardware/kegdisplay/) — KegDisplay (per-keg
+  tap display) planning doc: Nano+OLED board design, RS-485 daisy-chain
+  addressing scheme, and reverse-polarity protection circuit.
 
 ## Before ordering/building anything
 
