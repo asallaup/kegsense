@@ -11,8 +11,13 @@ ax.set_xlim(0, 225)
 ax.set_ylim(0, 95)
 ax.axis("off")
 
-WIRE = {"Red": "#d1332e", "Black": "#1a1a1a", "White": "#999999",
+WIRE = {"Red": "#d1332e", "Black": "#1a1a1a", "White": "#5c5c5c",
         "Green": "#2e8b3d", "Yellow": "#c9a300"}
+# "White" is deliberately a dark-ish gray, not literal white/near-white
+# (was #999999) - the actual signal wire is white, but a near-white line
+# on the diagram's light blue PCB background was nearly invisible,
+# especially the short A+/A- stub segments right at J5. This is a
+# diagram-legibility choice, not a claim about the real wire's color.
 
 def box(x, y, w, h, label, fc="#f4f4f4", ec="#333333", fontsize=10, weight="bold", lw=1.5):
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.3",
@@ -70,14 +75,14 @@ ax.plot([bx1, j5_x], [j5_ys[0], j5_ys[0]], color=WIRE["Red"], linewidth=1.4, zor
 ax.plot([bx2, bx2], [15, 81], color=WIRE["Black"], linewidth=1.4, zorder=2)
 ax.plot([bx2, j5_x], [j5_ys[1], j5_ys[1]], color=WIRE["Black"], linewidth=1.4, zorder=2)
 
-ax.plot([term_x + term_w, bx3], [78 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.4, zorder=2)
-ax.plot([term_x + term_w, bx3], [58 - 3.2, 58 - 3.2], color=WIRE["White"], linewidth=1.4, zorder=2)
-ax.plot([bx3, bx3], [58 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.4, zorder=2)
-ax.plot([bx3, j5_x], [j5_ys[2], j5_ys[2]], color=WIRE["White"], linewidth=1.4, zorder=2)
-ax.plot([term_x + term_w, bx4], [38 - 3.2, 38 - 3.2], color=WIRE["White"], linewidth=1.4, linestyle=(0, (4, 2)), zorder=2)
-ax.plot([term_x + term_w, bx4], [18 - 3.2, 18 - 3.2], color=WIRE["White"], linewidth=1.4, linestyle=(0, (4, 2)), zorder=2)
-ax.plot([bx4, bx4], [18 - 3.2, 38 - 3.2], color=WIRE["White"], linewidth=1.4, linestyle=(0, (4, 2)), zorder=2)
-ax.plot([bx4, j5_x], [j5_ys[3], j5_ys[3]], color=WIRE["White"], linewidth=1.4, linestyle=(0, (4, 2)), zorder=2)
+ax.plot([term_x + term_w, bx3], [78 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.8, zorder=2)
+ax.plot([term_x + term_w, bx3], [58 - 3.2, 58 - 3.2], color=WIRE["White"], linewidth=1.8, zorder=2)
+ax.plot([bx3, bx3], [58 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.8, zorder=2)
+ax.plot([bx3, j5_x], [j5_ys[2], j5_ys[2]], color=WIRE["White"], linewidth=1.8, zorder=2)
+ax.plot([term_x + term_w, bx4], [38 - 3.2, 38 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
+ax.plot([term_x + term_w, bx4], [18 - 3.2, 18 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
+ax.plot([bx4, bx4], [18 - 3.2, 38 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
+ax.plot([bx4, j5_x], [j5_ys[3], j5_ys[3]], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
 
 # caption INSIDE the pcb box, under the title, above the J1 row - avoids overlapping the title
 ax.text(pcb_x0 + pcb_w / 2, 85.5, "EXC_POS / EXC_NEG bus all 4 sensors  •  SIG_POS = J1+J3 (solid)  •  SIG_NEG = J2+J4 (dashed)",
