@@ -75,17 +75,25 @@ ax.plot([bx1, j5_x], [j5_ys[0], j5_ys[0]], color=WIRE["Red"], linewidth=1.4, zor
 ax.plot([bx2, bx2], [15, 81], color=WIRE["Black"], linewidth=1.4, zorder=2)
 ax.plot([bx2, j5_x], [j5_ys[1], j5_ys[1]], color=WIRE["Black"], linewidth=1.4, zorder=2)
 
-ax.plot([term_x + term_w, bx3], [78 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.8, zorder=2)
-ax.plot([term_x + term_w, bx3], [58 - 3.2, 58 - 3.2], color=WIRE["White"], linewidth=1.8, zorder=2)
-ax.plot([bx3, bx3], [58 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.8, zorder=2)
-ax.plot([bx3, j5_x], [j5_ys[2], j5_ys[2]], color=WIRE["White"], linewidth=1.8, zorder=2)
+ax.plot([term_x + term_w, bx3], [78 - 3.2, 78 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (1, 1.4)), zorder=2)
+ax.plot([term_x + term_w, bx3], [58 - 3.2, 58 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (1, 1.4)), zorder=2)
+# Vertical bus extends down to j5_ys[2] (A+'s own y), not just to J3's y -
+# a real bug, not just low contrast: the old range (58-3.2 to 78-3.2) never
+# reached A+'s y (47.5), so the final stub into J5 below was a disconnected
+# floating segment with no wire actually joining it to the J1/J3 bus above.
+# Dotted (not solid) so it reads clearly as distinct from EXC_POS/EXC_NEG's
+# solid bus lines, same idea as SIG_NEG's dashed style below.
+ax.plot([bx3, bx3], [j5_ys[2], 78 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (1, 1.4)), zorder=2)
+ax.plot([bx3, j5_x], [j5_ys[2], j5_ys[2]], color=WIRE["White"], linewidth=1.8, linestyle=(0, (1, 1.4)), zorder=2)
 ax.plot([term_x + term_w, bx4], [38 - 3.2, 38 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
 ax.plot([term_x + term_w, bx4], [18 - 3.2, 18 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
-ax.plot([bx4, bx4], [18 - 3.2, 38 - 3.2], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
+# Same fix, other direction: extends up to j5_ys[3] (A-'s y=42.5), which is
+# above J2's y (34.8) - the old range stopped short of it the same way.
+ax.plot([bx4, bx4], [18 - 3.2, j5_ys[3]], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
 ax.plot([bx4, j5_x], [j5_ys[3], j5_ys[3]], color=WIRE["White"], linewidth=1.8, linestyle=(0, (4, 2)), zorder=2)
 
 # caption INSIDE the pcb box, under the title, above the J1 row - avoids overlapping the title
-ax.text(pcb_x0 + pcb_w / 2, 85.5, "EXC_POS / EXC_NEG bus all 4 sensors  •  SIG_POS = J1+J3 (solid)  •  SIG_NEG = J2+J4 (dashed)",
+ax.text(pcb_x0 + pcb_w / 2, 85.5, "EXC_POS / EXC_NEG bus all 4 sensors  •  SIG_POS = J1+J3 (dotted)  •  SIG_NEG = J2+J4 (dashed)",
         ha="center", fontsize=7.3, color="#444444", zorder=4)
 
 # ============ HX711 module ============
@@ -94,8 +102,15 @@ box(hx_x, hx_y, hx_w, hx_h, "HX711\nbreakout\nmodule", fc="#e8f6ec", ec="#1a7a34
 for py in j5_ys:
     ax.plot([j5_x + j5_w, hx_x], [py, hx_y + hx_h * 0.7], color="#1a7a34", linewidth=0.8, zorder=1, alpha=0.6)
 
+# J6 drawn as GND/VCC/SCK/DT here (not the PCB's actual silkscreen pin
+# order, which is GND/DT/SCK/VCC - see the Connectors table in README.md
+# and generate_pcb.py) - deliberate: this diagram shows the logical/
+# physical wire connections, not a literal pin-position map of the real
+# header. Matching J7's order means the J6->J7 lines below draw straight
+# instead of crossing. Do not use this picture as a silkscreen reference
+# for J6 - check the real board or the Connectors table for that.
 j6_x, j6_y, j6_w, j6_h = hx_x + hx_w + 16, 40, 11, 20
-j6_ys = pin_box(j6_x, j6_y, j6_w, j6_h, "J6", ["GND", "DT", "SCK", "VCC"])
+j6_ys = pin_box(j6_x, j6_y, j6_w, j6_h, "J6", ["GND", "VCC", "SCK", "DT"])
 for py in j6_ys:
     ax.plot([hx_x + hx_w, j6_x], [hx_y + hx_h * 0.3, py], color="#1a7a34", linewidth=0.8, zorder=1, alpha=0.6)
 ax.text(hx_x + hx_w / 2, hx_y - 3, "(HX711 plugs into J5 for analog leads, J6 for digital/power)",
@@ -106,12 +121,16 @@ j7_x, j7_y, j7_w, j7_h = j6_x + j6_w + 14, 40, 11, 20
 j7_ys = pin_box(j7_x, j7_y, j7_w, j7_h, "J7  (RJ11, RJ14 6P4C)", ["GND", "VCC", "SCK", "DT"])
 
 pin_color = {"GND": WIRE["Black"], "VCC": WIRE["Red"], "SCK": WIRE["Green"], "DT": WIRE["Yellow"]}
-j6_pins = ["GND", "DT", "SCK", "VCC"]
+j6_pins = ["GND", "VCC", "SCK", "DT"]
 j7_pins = ["GND", "VCC", "SCK", "DT"]
 for i, p in enumerate(j6_pins):
     y6 = j6_ys[i]
     y7 = j7_ys[j7_pins.index(p)]
     ax.plot([j6_x + j6_w, j7_x], [y6, y7], color=pin_color[p], linewidth=1.8, zorder=2)
+
+ax.text((j6_x + j7_x + j7_w) / 2, j6_y - 3,
+        "(logical wire connections shown here - not the PCB's physical\npin order; see the Connectors table for J6's real silkscreen order)",
+        ha="center", fontsize=7, color="#666666")
 
 # ============ RJ11 cable -> KegHub ============
 hub_x, hub_y, hub_w, hub_h = 204, 30, 16, 40
