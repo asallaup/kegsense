@@ -130,17 +130,48 @@ for the equivalent docs that preceded the KegSensor module).
     hopping from KegStation to keg 1 to keg 2 ... to keg 5, instead of 5
     separate home-run cables. RS-485 actively prefers this topology
     (star wiring causes reflections); a bare OLED wouldn't have this
-    connector pattern, only the Nano side does.
+    connector pattern, only the Nano side does. 5 conductors per cable:
+    A, B, GND, +V, and ENABLE (see addressing, below) — not 4.
   - **Termination**: a 120Ω resistor at each *end* of the chain
     (KegStation end and the last KegDisplay) — not at the intermediate
     boards — to prevent signal reflections. Cheap insurance even on a
     short, slow bus.
-  - **Addressing/protocol on the RS-485 line**: not yet decided between
-    Modbus RTU (established, off-the-shelf protocol for exactly this
-    "poll device N over a shared line" pattern, with existing Arduino
-    libraries) or a small custom protocol.
-  - **Power**: distributed down the *same* 4-wire daisy-chain cable as
-    the RS-485 signal (A, B, GND, +V) — RS-485 itself doesn't carry
+  - **Addressing: chain-position auto-addressing, chosen over hardware
+    address switches deliberately** — switches are the simpler, more
+    robust option at this scale (5 hand-built units), and were the
+    initial recommendation, but auto-addressing was picked anyway as
+    the more interesting thing to build, with its real trade-off
+    understood going in (below), not overlooked.
+    - **Wiring**: one extra conductor, `ENABLE`, alongside A/B/GND/+V.
+      KegStation permanently enables KegDisplay #1. Every board holds
+      its own `ENABLE_OUT` low until it has an address.
+    - **Discovery handshake** (Pi-driven, over the RS-485 line): Pi
+      broadcasts "any enabled, unaddressed board, respond"; only the
+      one currently-enabled blank board answers; Pi assigns it the next
+      address; that board raises `ENABLE_OUT`, waking the next one in
+      the chain; repeat until a broadcast gets no response.
+    - **Address persists after first assignment** (stored in EEPROM,
+      not just RAM) — a board that already knows its address skips
+      discovery entirely on future boots and starts responding
+      immediately, with no dependency on being "woken" by the board
+      before it. This confines the chain-dependency fragility to
+      *initial commissioning only*: once all 5 have been addressed
+      once, a board dying later doesn't take its downstream neighbors
+      down with it during normal operation.
+    - **Residual risk, by design, not overlooked**: a board that
+      already has a stored address must still assert `ENABLE_OUT`
+      immediately on every boot (not just its own first one), purely
+      so a *replacement* board further down the chain can still be
+      discovered later. So: a newly-inserted/replacement board can only
+      be discovered if every board between KegStation and it is
+      currently alive and passing its enable signal through. Narrower
+      and less likely than "any dead board breaks everything
+      downstream," but still real — worth remembering at replacement
+      time.
+    - Protocol on top of RS-485 (Modbus RTU vs. a small custom one) —
+      still not decided, independent of the addressing scheme above.
+  - **Power**: distributed down the same daisy-chain cable as the
+    RS-485 signal (A, B, GND, +V, ENABLE) — RS-485 itself doesn't carry
     power (unlike PoE), but nothing stops running power on separate
     conductors in the same cable, so no separate power supply is needed
     at each KegDisplay. The chain as a whole still needs its own supply,
@@ -179,11 +210,12 @@ for the equivalent docs that preceded the KegSensor module).
   connection + a USB-to-RS485 adapter/HAT to the Pi's GPIO header) or
   wire it directly on a protoboard/HAT.
 - **KegDisplay specifics (see above)**: Modbus RTU vs. a custom protocol
-  for RS-485 node addressing; the actual RS-485-chain power supply
-  voltage (12V assumed for now, pending real cable-length/current
-  numbers) and each board's local regulator; specific OLED model/size
-  and Nano variant; the physical mounting method at/over each tap; and
-  the physical cable path from KegStation out to keg 1 (then daisy-
+  on top of RS-485 (addressing scheme itself is decided - chain-position
+  auto-addressing); the actual RS-485-chain power supply voltage (12V
+  assumed for now, pending real cable-length/current numbers) and each
+  board's local regulator; specific OLED model/size and Nano variant;
+  the physical mounting method at/over each tap; and the physical cable
+  path from KegStation out to keg 1 (then daisy-
   chained on from there, so only that first leg needs separate scoping).
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
   5×DT KegSensor scheme, and the on-disk format/path for the readings
