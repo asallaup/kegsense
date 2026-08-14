@@ -4,6 +4,14 @@
 hardware/kegsensor/fp-info-cache
 hardware/kegsensor/~*.lck
 hardware/kegsensor/keg_sensor_module-backups/
+hardware/kegdisplay/fp-info-cache
+hardware/kegdisplay/~*.lck
+hardware/kegdisplay/keg_display_module-backups/
+hardware/kegdisplay/keg_display_lid_module-backups/
+hardware/kegdisplay/*_erc_report.json
+hardware/kegdisplay/*_drc_report.json
+hardware/kegdisplay/erc_report.json
+hardware/kegdisplay/drc_report.json
 .DS_Store
 
 # Third-party reference file (Printables, unknown license) - not ours to

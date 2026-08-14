@@ -3,34 +3,32 @@ import re, uuid, pathlib
 SYM_ROOT = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols"
 OUT_DIR = pathlib.Path(__file__).resolve().parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-PROJECT_NAME = "keg_display_module"
+PROJECT_NAME = "keg_display_lid_module"
 SCH_PATH = OUT_DIR / f"{PROJECT_NAME}.kicad_sch"
 
-# --- Design summary (rev 5) -------------------------------------------------
-# Per-tap KegDisplay board: 10x WS2812 LEDs in a row, forming a
-# horizontal progress bar (KegStation lights however many correspond to
-# the keg's remaining %). NO MCU - purely a WS2812 chain, KegStation
-# drives it directly. See README's revision note for why the earlier
-# ATtiny1614+OLED approach was dropped (real mounting-space constraints
-# it couldn't fit inside no matter how the board/connectors were
-# arranged).
+# --- Design summary ---------------------------------------------------
+# Per-tap KegDisplay LID board - hosts the OLED and the bi-color status
+# LED, both physically mounted on the case lid (see README's mechanical-
+# split decision). Connects back to the main board (keg_display_module,
+# same directory) via a single 6-wire cable, JST-PH on both ends.
+# J1 = cable-in from the main board (same JST-PH 6-pin part as the main
+# board's own J3, so the cable is a standard JST-to-JST harness).
+# J2 = OLED module socket (4-pin: VCC/GND/SCL/SDA) - most 0.91in SSD1306
+# modules ship with their own male pin header, so this is a female
+# socket the module plugs into.
+# LED1 = the bi-color (yellow/green) status LED itself - a real
+# component on this board now (not a connector standing in for an
+# off-board part, unlike the main board's earlier placeholder). Common
+# cathode, 3 leads. No series resistors here - those stay on the main
+# board, ahead of the cable (see main board's README/schematic notes).
 #
-# J1 = IN (from upstream/KegStation), J2 = OUT (to next tap downstream).
-# Connector choice is explicitly NOT committed yet (see README Still
-# Open) - JST-PH 3-pin used here as a placeholder so real PCB geometry
-# can be generated/validated; swap later once a connector is chosen with
-# the actual ~100mm tap-spacing / ~12mm cable-gap constraint in mind.
-# R1 = LED data-in series resistor (standard WS2812 practice).
-# C1 = decoupling cap near LED1.
-# LED1..LED10 = WS2812B (WS2812B-Mini footprint for compactness -
-# package choice flagged Still Open in README, this is a working
-# assumption not a final commitment).
-#
-# Net plan: GND/VCC bussed to J1, J2, every LED, C1. Data chain:
-# J1.DATA_IN -> R1 -> LED1.DIN, LED1.DOUT -> LED2.DIN, ...,
-# LED10.DOUT -> J2.DATA_OUT.
-
-N_LEDS = 5
+# Net plan (all straight pass-through from J1 to J2/LED1):
+#   J1.1 VCC       -> J2.1
+#   J1.2 GND       -> J2.2, LED1.3 (common cathode)
+#   J1.3 SCL       -> J2.3
+#   J1.4 SDA       -> J2.4
+#   J1.5 YELLOW_LED -> LED1.1
+#   J1.6 GREEN_LED  -> LED1.2
 
 def extract_balanced(text, start_idx):
     depth = 0
@@ -60,9 +58,8 @@ def get_pins(block):
 
 LIB_DEFS = {
     "Conn_01x03": ("Connector_Generic", "Conn_01x03"),
-    "R": ("Device", "R"),
-    "C": ("Device", "C"),
-    "WS2812B": ("LED", "WS2812B"),
+    "Conn_01x04": ("Connector_Generic", "Conn_01x04"),
+    "Conn_01x06": ("Connector_Generic", "Conn_01x06"),
 }
 SYM_BLOCKS = {}
 SYM_PINS = {}
@@ -86,24 +83,12 @@ def add(ref, sym_key, x, y, value, footprint, pins):
     components.append(dict(ref=ref, sym_key=sym_key, at=(snap(x), snap(y)), value=value,
                             footprint=footprint, pins=pins))
 
-add("J1", "Conn_01x03", 20, 30, "IN_from_upstream", "Connector_JST:JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical",
-    {"1": "GND", "2": "VCC", "3": "DATA_0"})
-add("R1", "R", 35, 20, "330", "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical",
-    {"1": "DATA_0", "2": "DATA_1"})
-add("C1", "C", 45, 20, "100n", "Capacitor_THT:C_Disc_D3.0mm_W2.0mm_P2.50mm",
-    {"1": "VCC", "2": "GND"})
-
-x = 45
-for i in range(1, N_LEDS + 1):
-    x += 15
-    din_net = f"DATA_{i}"
-    dout_net = f"DATA_{i+1}"
-    add(f"LED{i}", "WS2812B", x, 30, "WS2812B", "LED_SMD:LED_WS2812B-Mini_PLCC4_3.5x3.5mm",
-        {"4": din_net, "2": dout_net, "1": "VCC", "3": "GND"})
-
-x += 15
-add("J2", "Conn_01x03", x, 30, "OUT_to_downstream", "Connector_JST:JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical",
-    {"1": "GND", "2": "VCC", "3": f"DATA_{N_LEDS+1}"})
+add("J1", "Conn_01x06", 30, 40, "Cable_from_main_board", "Connector_JST:JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical",
+    {"1": "VCC", "2": "GND", "3": "SCL", "4": "SDA", "5": "YELLOW_LED", "6": "GREEN_LED"})
+add("J2", "Conn_01x04", 70, 40, "SSD1306_0.91in_OLED_socket", "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical",
+    {"1": "VCC", "2": "GND", "3": "SCL", "4": "SDA"})
+add("LED1", "Conn_01x03", 70, 65, "Bicolor_LED_Yellow-Green_CommonCathode", "LED_THT:LED_D5.0mm-3",
+    {"1": "YELLOW_LED", "2": "GREEN_LED", "3": "GND"})
 
 def prop(name, val, x, y, angle, hide=False, size=1.27):
     hide_s = "\n\t\t\t\t(hide yes)" if hide else ""
@@ -123,8 +108,8 @@ def sym_instance(ref, sym_key, x, y, value, footprint, npins):
     for i in range(1, npins + 1):
         pu = new_uuid()
         pins_block += f'\t\t(pin "{i}"\n\t\t\t(uuid "{pu}")\n\t\t)\n'
-    ref_prop = prop("Reference", ref, x, y - 8, 0)
-    val_prop = prop("Value", value, x, y + 8, 0)
+    ref_prop = prop("Reference", ref, x, y - 10, 0)
+    val_prop = prop("Value", value, x, y + 10, 0)
     fp_prop = prop("Footprint", footprint, x, y, 0, hide=True)
     ds_prop = prop("Datasheet", "~", x, y, 0, hide=True)
     return f'''\t(symbol
@@ -200,34 +185,34 @@ def add_text(msg, x, y, size=1.5):
 \t)''')
 
 for c in components:
-    cx, cy = c["at"]
+    x, y = c["at"]
     pins = SYM_PINS[c["sym_key"]]
-    symbol_blocks.append(sym_instance(c["ref"], c["sym_key"], cx, cy, c["value"], c["footprint"], len(pins)))
+    symbol_blocks.append(sym_instance(c["ref"], c["sym_key"], x, y, c["value"], c["footprint"], len(pins)))
     for num, lx, ly, angle in pins:
-        px = snap(cx + lx)
-        py = snap(cy - ly)
+        px = snap(x + lx)
+        py = snap(y - ly)
         net = c["pins"][num]
         w, l = wire_and_label(px, py, lx, ly, net)
         wire_blocks.append(w)
         label_blocks.append(l)
 
-add_text("Keg Display Module (rev 5) - 10x WS2812 progress bar, NO MCU.\\nKegStation drives the chain directly. See ../README.md for the full revision history.", 20, 5, 2)
-add_text("Connector choice for J1/J2 NOT committed (JST-PH 3-pin used as a\\nplaceholder) - see README Still Open. R1 = LED data-in series resistor.\\nC1 = decoupling near LED1. LED package (WS2812B-Mini SMD) also not\\nfinal - see README.", 20, 50, 1.27)
+add_text("Keg Display LID Module - hosts the OLED + bi-color status LED.\\nConnects to the main board (keg_display_module) via one 6-wire JST-PH cable - see ../README.md.", 20, 10, 2)
+add_text("J2 = OLED module socket, pin order VCC/GND/SCL/SDA - CONFIRM against\\nthe actual 0.91in SSD1306 module's own pin order before wiring.\\nLED1 = bi-color LED, common cathode, no series resistors here (they\\nstay on the main board, ahead of the cable).", 20, 90, 1.27)
 
 sch = f'''(kicad_sch
 \t(version 20250114)
 \t(generator "eeschema")
 \t(generator_version "9.0")
 \t(uuid "{ROOT_UUID}")
-\t(paper "A3")
+\t(paper "A4")
 \t(title_block
-\t\t(title "KegDisplay")
+\t\t(title "KegDisplay Lid Module")
 \t\t(company "Sallaup Electronics")
-\t\t(comment 1 "Per-tap 10-LED WS2812 progress bar, no MCU")
+\t\t(comment 1 "Per-tap lid board: OLED socket + bi-color status LED")
 \t\t(comment 2 "Part of the Sallaup KegSense keg-monitoring system")
 \t)
 \t(lib_symbols
-{chr(10).join(SYM_BLOCKS[k] for k in ["Conn_01x03", "R", "C", "WS2812B"])}
+{chr(10).join(SYM_BLOCKS[k] for k in ["Conn_01x03", "Conn_01x04", "Conn_01x06"])}
 \t)
 {chr(10).join(symbol_blocks)}
 {chr(10).join(wire_blocks)}

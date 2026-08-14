@@ -3,11 +3,14 @@
 Part of the **Sallaup KegSense** keg-monitoring system, made by
 **Sallaup Electronics**.
 
-**KegDisplay** is the per-keg display: a small board mounted at/over
-each keg's own tap, showing that keg's brew name and weight/%
-remaining — right where you're pouring from, not on one shared display
-listing all 5 kegs. One per keg, daisy-chained back to **KegStation**
-(the central Raspberry Pi unit — see [`../kegstation/`](../kegstation/)).
+**KegDisplay** is the per-keg status indicator: a vertical WS2812 LED
+strip mounted on the collar's side at each tap, showing that keg's
+remaining % as a fill-level bar (more LEDs lit from the bottom = more
+left — same read as a fuel gauge). No per-tap MCU, no custom PCB —
+**KegStation** (the central Raspberry Pi — see
+[`../kegstation/`](../kegstation/)) drives the whole chain directly,
+and the strip itself is an off-the-shelf part, just cut to length. See
+the revision note below for how this replaced the OLED+MCU approach.
 
 This is a planning doc — no hardware or software has been built yet.
 Captures decisions made so far so they aren't lost before implementation
@@ -15,191 +18,190 @@ starts (see [`../kegsensor/wiring.md`](../kegsensor/wiring.md) and
 [`../keghub/README.md`](../keghub/README.md) for the equivalent docs
 that preceded the KegSensor module).
 
+**Revision note**: this design has gone through three full rewrites, kept
+in git history rather than deleted outright:
+1. Originally an Arduino Nano + MAX485 board per tap, daisy-chained over
+   RS-485 with a custom chain-position auto-addressing scheme.
+2. Then a bare OLED module per tap wired star-topology through a
+   TCA9548A I2C multiplexer at KegStation, dropping the Nano entirely.
+3. Then, realizing an OLED at every tap was itself more display than the
+   job needed, the per-tap hardware shrank further to just a status LED
+   + a pushbutton, with the actual detailed information (brew name,
+   weight) moved to a screen at KegStation instead.
+4. **This version**: brings the OLED back, but on a much smaller MCU
+   with its own onboard I2C - each tap's OLED shows its own brew name +
+   weight directly, all the time, no button/KegStation-touchscreen
+   detail view needed. The Nano-sized objection that killed revision 1
+   doesn't apply this time; the shared-I2C-address conflict that killed
+   the mux approach in revision 2 doesn't apply either (each tap's OLED
+   is on its *own* MCU's I2C bus, not a bus shared across taps). The MCU
+   choice within this revision itself went through several rounds:
+   Adafruit Trinket M0 (real hardware I2C, easy USB/Arduino flashing,
+   but ~$5-6/unit) -> Seeeduino XIAO SAMD21 (same capability, smaller
+   board, similar cost) -> ATtiny10 (tiny and ~$0.30, but no hardware
+   I2C/UART and needs a TPI programmer) -> CH32V003 (cheapest of all,
+   ~$0.10-0.15, real hardware I2C, but RISC-V + WCH-LinkE is a bigger
+   toolchain departure than anything else in this project) ->
+   **ATtiny1614 in SOIC-14**, the settled choice: real hardware I2C,
+   16KB flash/2KB RAM (enough for real OLED text, unlike ATtiny10's
+   1KB), ~$0.60-1.20/unit (far cheaper than Trinket M0/XIAO, only a
+   modest premium over CH32V003), programmed over UPDI (simpler than
+   ATtiny10's TPI - a USB-serial adapter + one resistor is enough), and
+   SOIC-14 is still hand-solderable (unlike QFN packages, which need
+   reflow/hot air).
+5. **This version**: dropped the OLED+MCU entirely. The real physical
+   constraints at the mounting location (~100mm between taps, ~30mm max
+   height) kept defeating every attempt to fit the ATtiny1614+OLED+
+   connector assembly — landscape reorientation, connector swaps
+   (KK-254 vs RJ14 vs audio jack), aggressive layout compaction all hit
+   walls, most fundamentally that any locking/panel-mount connector's
+   physical plug needs ~12-20mm of depth, which doesn't fit in the
+   ~12mm gap left between taps once a board of any reasonable size is
+   in place. Back to a WS2812 LED chain (first explored in revision 3),
+   but as a 10-LED bar graph per tap instead of a single status LED,
+   and with KegStation driving the chain directly — no per-tap
+   MCU/logic at all, sidestepping the space problem instead of
+   continuing to fight it.
+6. **This version**: switched from a horizontal custom-PCB LED bar to a
+   **vertical off-the-shelf WS2812B LED strip** mounted on the collar's
+   side (~50mm width x ~130mm height available there - a much bigger
+   budget than the ~100x30mm the horizontal layout was fighting for).
+   Two wins at once: (1) a commercial strip at 140-200 LEDs/m gives
+   18-26 LEDs over that length, cut to whatever length is wanted, so
+   there's no custom PCB to design/fab at all - just a cut strip with a
+   few wires soldered on at each end; (2) a vertical fill-level bar
+   reads more intuitively than a horizontal one (same mental model as a
+   fuel gauge or thermometer). Nothing below reflects any earlier
+   revision.
+
 ## Decisions so far
 
-- **Board: Arduino Nano + OLED on one combined PCB, mounted via
-  headers.** The Nano sockets into female headers rather than being
-  soldered/bare-chip — swappable without desoldering if one fails. The
-  OLED is a **0.96" SSD1306, I2C** — wired directly to its own Nano over
-  short local I2C traces on the same PCB, no cable or connector for that
-  link (it's the RS-485 run back to KegStation that's the long one, not
-  this).
-- **Why not just 5 bare I2C OLEDs straight to the Pi**: cheap small
-  OLEDs like the SSD1306 ship at a fixed I2C address (usually 0x3C) —
-  putting 5 on one bus directly doesn't work, at most 2 could coexist by
-  address alone. An I2C multiplexer (TCA9548A) or per-display SPI
-  chip-selects were both considered and ruled out in favor of the
-  Nano-per-tap design below, which solves both the addressing problem
-  *and* the long-cable-run problem in one move.
-  - **Why this solves addressing**: an OLED driver chip's I2C address is
-    fixed in hardware, but a microcontroller's address (here, its node
-    address on the RS-485 line) is just a value set in its own firmware
-    — freely chosen, no collision between the 5 KegDisplay boards even
-    though every OLED behind them answers to the same fixed address
-    locally.
-  - **Why RS-485, not I2C, for the run back to KegStation**: I2C's
-    open-drain bus has a real capacitance/distance budget that gets
-    tight over long or multi-drop cable runs; RS-485 is a differential
-    signaling standard built specifically for long, noisy, multi-drop
-    runs (the same class of problem as industrial sensor networks).
-- **RS-485 transceiver: MAX485** (the standard, cheap choice). KegStation
-  needs a USB-to-RS485 adapter or HAT to get onto the same bus.
-- **Daisy-chain connector: RJ12 (6P6C)** — the same physical jack body as
-  KegSensor's "RJ11" (which is actually RJ14, 6P4C — see
-  [`../kegsensor/wiring.md`](../kegsensor/wiring.md)), just with all 6
-  positions wired instead of 4. Chosen over screw terminals (bulkier) or
-  JST-XH (needs crimped cables you can't buy pre-made as easily) since
-  it reuses connector hardware and crimping tools this project already
-  has, for a short run where RS-485's longer-distance robustness isn't
-  even strictly needed — it's used here mainly for the clean multi-drop
-  daisy-chain electrical behavior, not because the distance demands it.
-  Not a real telecom RJ12 pinout — like KegSensor's connector, this
-  project defines its own pin convention (below), not an official
-  standard.
-  - **Two jacks per board (IN/OUT), wired in parallel** — one cable hops
-    from KegStation to keg 1's board, out to keg 2's, and so on, instead
-    of 5 separate home-run cables. RS-485 actively prefers this daisy-
-    chain topology (star wiring causes reflections). A bare OLED
-    wouldn't have this connector pattern — only the Nano side does.
-  - **6 conductors used**: A, B (RS-485 differential pair), GND, +V,
-    ENABLE (see addressing, below), +1 spare.
-  - **Cable caution — same gotcha as KegSensor's RJ11 cables**: flat
-    silver-satin style phone cables only preserve pin order end-to-end
-    if crimped "straight through" — crimping both plugs facing the same
-    way on a flat cable actually mirrors the pin order at one end (the
-    classic old-telephone-cord gotcha). Matters more here than for
-    KegSensor's 4-wire cable: a mirrored 6-wire cable wouldn't just flip
-    one signal, it could put A/B backwards, cross ENABLE onto the spare,
-    or worse, feed +V into what the far end expects to be GND. Verify
-    pin-for-pin continuity with a multimeter before trusting any cable
-    — don't rely on a "patch cable" label, since that terminology isn't
-    reliably used for phone-style cords the way it is for Ethernet.
-  - **Termination**: a 120Ω resistor at each *end* of the chain
-    (KegStation end and the last KegDisplay) — not at the intermediate
-    boards — to prevent signal reflections. Cheap insurance even on a
-    short, slow bus.
-- **Addressing: chain-position auto-addressing, chosen over hardware
-  address switches deliberately.** Switches (a rotary hex switch or DIP
-  bank per board) are the simpler, more robust option at this scale (5
-  hand-built units) and were the initial recommendation — auto-
-  addressing was picked anyway as the more interesting thing to build,
-  with its real trade-off understood going in, not overlooked.
-  - **Wiring: auto-detecting `ENABLE`, not a fixed `ENABLE_IN`/
-    `ENABLE_OUT` pin pair.** Each board's two RJ12 jacks get their own
-    GPIO for the `ENABLE` conductor (no fixed upstream/downstream role
-    per jack) — at boot, a board checks which of its two `ENABLE` pins
-    is already driven high; whichever one is, that jack is upstream, and
-    the board then drives the *other* jack's `ENABLE` pin high to enable
-    the next board in the chain. KegStation permanently drives `ENABLE`
-    high on its own connector, enabling whichever board is plugged in
-    first (KegDisplay #1). Chosen over fixed `ENABLE_IN`/`ENABLE_OUT`
-    pins specifically so a cable plugged into the "wrong" jack (an easy
-    mistake with two visually-identical RJ12 jacks) still works instead
-    of silently breaking the chain past that board — see
-    `enable_wiring_options.png` (generated by
-    `generate_enable_wiring_diagram.py`) for a side-by-side of both
-    schemes and the failure case this avoids.
-  - **Discovery handshake** (Pi-driven, over the RS-485 line): Pi
-    broadcasts "any enabled, unaddressed board, respond"; only the one
-    currently-enabled blank board answers; Pi assigns it the next
-    address; that board drives its downstream jack's `ENABLE` pin high
-    (per the auto-detect logic above), waking the next one in the chain;
-    repeat until a broadcast gets no response.
-  - **Address persists after first assignment** (stored in EEPROM, not
-    just RAM) — a board that already knows its address skips discovery
-    entirely on future boots and starts responding immediately, with no
-    dependency on being "woken" by the board before it. This confines
-    the chain-dependency fragility to *initial commissioning only*: once
-    all 5 have been addressed once, a board dying later doesn't take its
-    downstream neighbors down with it during normal operation.
-  - **Residual risk, by design, not overlooked**: a board that already
-    has a stored address must still run its upstream-detection and
-    drive its downstream jack's `ENABLE` pin high immediately on every
-    boot (not just its own first one), purely so a *replacement* board
-    further down the chain can still be discovered later. So: a
-    newly-inserted/replacement board can only be discovered if every
-    board between KegStation and it is currently alive and passing its
-    enable signal through. Narrower and less likely than "any dead board
-    breaks everything downstream," but still real — worth remembering at
-    replacement time.
-  - **Protocol on top of RS-485: Modbus RTU** — established, off-the-
-    shelf, existing Arduino libraries, so no custom protocol to design/
-    debug. Independent of the chain-position addressing scheme above:
-    addressing decides *what* Modbus address a board ends up with,
-    Modbus RTU itself is just the request/response framing on top of
-    that. KegStation is the Modbus master and polls each KegDisplay by
-    its assigned address; KegDisplay boards are slaves, they only ever
-    respond, never initiate.
-- **Power: 12V**, distributed down the same RJ12 daisy-chain cable as
-  the RS-485 signal (A, B, GND, +V, ENABLE) — RS-485 itself doesn't
-  carry power (unlike PoE), but nothing stops running power on separate
-  conductors in the same cable, so no separate power supply is needed at
-  each KegDisplay. The chain as a whole needs its own 12V supply,
-  separate from the Pi's own 5V one; exact current/wattage rating still
-  depends on chain length and final board count (see Still Open).
-  - **No separate regulator needed on the board**: the Nano module
-    already has its own onboard 5V regulator, accepting 7–12V directly
-    on its VIN pin — 12V sits right at the top of that range, not
-    beyond it. Feeding the chain's incoming +V straight into the Nano's
-    VIN and tapping its own 5V output pin to power the OLED and the
-    MAX485 removes a component that would otherwise be needed.
-- **Reverse-polarity protection**: a P-MOSFET high-side protection
-  circuit sits in the +V line right where the RJ12 cable's power enters
-  the board, guarding against a reversed/miscrimped cable. See
-  `power_protection.png` (generated by
-  `generate_power_protection_diagram.py` — regenerate after editing that
-  script with `python3 generate_power_protection_diagram.py`).
-  - **Q1 (P-channel MOSFET)**: Source ties to the incoming, possibly-
-    reversed +V pin; Drain feeds the protected +V rail onward to the
-    Nano's VIN.
-  - **R1 (10kΩ)**: pulls the Gate down toward the board's own GND
-    reference (tied to the cable's GND pin) — this is what makes the
-    protection actually work. Correct polarity: Source sits well above
-    Gate (Vgs strongly negative) → MOSFET conducts. Reversed: the GND
-    pin ends up carrying the real +V, so Gate ends up *above* Source
-    (Vgs positive) → MOSFET blocks, board just doesn't power up instead
-    of getting damaged.
-  - **D1 (optional)**: a small zener from Gate to Source, clamping Vgs
-    in case a fault ever delivers more voltage than expected. Skippable
-    if minimizing part count matters more.
-  - **A real mistake caught before finalizing, not just assumed
-    correct**: the first draft had R1 wired from Gate to *Source*
-    instead of Gate to GND, which would have given ~0V Vgs and never
-    turned the MOSFET on at all, in either polarity. Caught by working
-    through the correct-vs-reversed cases explicitly (what voltage ends
-    up where, on each pin, under each scenario) rather than trusting the
-    first sketch.
-  - A/B and ENABLE don't get the same protection treatment, and don't
-    need it: RS-485 transceivers like the MAX485 are built to tolerate
-    an A/B swap (inverts the signal, doesn't damage the chip — the most
-    common RS-485 wiring mistake there is), and ENABLE crossed with A,
-    B, or the spare pin is a similar low-voltage logic-level mixup, not
-    a damage risk. Only GND/+V reversal actually threatens the hardware,
-    so that's the one pair worth active protection.
-- **Status LED: bi-color (yellow/green, common-cathode, 3-lead), driven by
-  2 Nano GPIO pins** through current-limiting resistors — separate pins
-  from the ENABLE detection and RS-485 lines, mounted somewhere visible
-  on the board without opening anything up.
-  - **Yellow (solid)**: board has power but no address yet — covers both
-    "waiting its turn" (upstream board hasn't enabled it) and "enabled,
-    mid-discovery-handshake."
-  - **Green (solid)**: board has an address and is being actively polled
-    by KegStation — i.e. it has received a valid Modbus RTU request
-    addressed to it within the heartbeat timeout (see below).
-  - **Green (blinking)**: board has an address but has *not* received a
-    valid Modbus request addressed to it within the heartbeat timeout —
-    covers a dead upstream cable, a crashed KegStation poll loop, or
-    this board itself losing the bus, without collapsing that into the
-    same solid green as "everything's fine." Reverts to solid the moment
-    another valid request for its address comes in.
-  - **Off**: no power. Free — doesn't need firmware, it's just the LED
-    having no supply.
-  - **Heartbeat timeout**: each board runs its own watchdog timer, reset
-    on every valid Modbus request addressed to it (not just any traffic
-    on the shared bus — RS-485 is multi-drop, other boards' polls don't
-    count). Exact timeout value not yet tuned — needs to be a small
-    multiple of KegStation's actual poll interval once that's decided,
-    long enough to not false-trigger on a single dropped frame.
+- **Per tap: a commercial WS2812B LED strip (140-200 LEDs/m), cut to
+  length, mounted vertically on the collar's side.** No custom PCB, no
+  MCU. KegStation lights however many LEDs correspond to the keg's
+  remaining % as a bottom-up fill bar. Same chain-position addressing as
+  revision 3/5 — purely protocol-level, no firmware/logic at the tap.
+- **Topology: daisy chain, 3 conductors (+5V, GND, WS2812 data)** — cut
+  strip has these 3 pads at each end; a short pigtail at each end
+  carries them to a chain connector.
+- **Power: 5V**, matching the Pi's rail, same as every earlier revision.
+- **Mounting location: collar's right side, vertical**, not the tap
+  face — ~50mm width x ~130mm height available there, established this
+  session as the actual space budget (see revision note).
+
+## Superseded (revision 5, custom PCB LED bar) — kept for reference
+
+The horizontal custom-PCB version (generate_schematic.py/generate_pcb.py
+in this directory) went through extensive layout work — 10 LEDs down to
+5, connector swaps, edge-flush J1/J2 for case-wall cutout access — all
+now moot since revision 6 uses a cut length of commercial strip instead
+of a custom board. Kept as-is in this directory rather than deleted;
+treat as historical, not a current target to keep building against.
+
+## Superseded (revision 4, ATtiny1614+OLED) — kept for reference
+
+- **Per tap: one ATtiny1614 (SOIC-14) + one 0.91" SSD1306 I2C OLED.** The
+  ATtiny1614 is its own I2C master for its own OLED — no shared bus, no
+  address conflict, no mux (that was revision 2's problem, and it simply
+  doesn't arise here since each tap's I2C bus is private to that tap).
+  No button, no resistor ladder, no KegStation-side ADC — the OLED just
+  always shows its own keg's brew name + weight. See the revision note
+  above for the full MCU comparison (Trinket M0/XIAO/ATtiny10/CH32V003)
+  that led here.
+- **Development workflow: Arduino IDE + megaTinyCore, prototype on a
+  SOIC-to-DIP adapter, flash over UPDI, keep a UPDI header on the final
+  board.** Concretely:
+  1. Write firmware as a normal Arduino sketch (megaTinyCore adds
+     ATtiny1614 as a board option, `Wire.h` works for I2C).
+  2. Prototype on a breadboard by soldering the chip onto a cheap
+     SOIC-14-to-DIP adapter board first, rather than committing straight
+     to a custom PCB.
+  3. Flash via **SerialUPDI** — a plain USB-to-serial adapter plus one
+     resistor between its TX/RX lines, wired to the chip's UPDI pin.
+     megaTinyCore supports this directly as an Arduino IDE upload
+     method, so it's still just "hit Upload."
+  4. Once firmware is solid, solder a chip onto the real per-tap PCB,
+     which includes its own **3-pin UPDI header (UPDI/VCC/GND)** so it
+     can be reflashed in place later (fixing a bug or tweaking the OLED
+     layout after it's already mounted at the tap) without desoldering.
+  5. **Field reflashing: temporary cable from KegStation's own UART pins
+     to J4, one tap at a time** — a Pi's UART (TX/RX) can run SerialUPDI
+     directly, so KegStation itself is the programmer, no separate
+     laptop/USB adapter needed. Not a permanent connection (UPDI is
+     point-to-point; it can't ride the shared chain bus without hitting
+     every tap's chip at once) — walk up to the tap, plug in, flash,
+     unplug. J4 stays inside the case (no dedicated access port needed
+     in the lid/body — see Still Open) since this is infrequent enough
+     that opening the case is an acceptable cost.
+  6. **Possible future upgrade, not implemented now**: a bootloader that
+     receives firmware over the chain itself (via J1, reusing the same
+     "consume my chunk, relay the rest" addressing idea as the brew-data
+     relay), removing the need to physically visit a tap at all for
+     routine updates. J4/UPDI would still be needed for a blank chip's
+     very first flash either way. Deliberately deferred — not worth the
+     bootloader complexity until the rest of the system is proven out.
+- **Chain addressing: still positional, like the WS2812 version, but now
+  relayed by firmware instead of being protocol-free.** KegStation
+  streams all 5 kegs' data down the chain in tap order; each ATtiny1614
+  reads its own chunk off its "chain in" pin (a bit-banged serial RX),
+  keeps that chunk for its own OLED, and relays everything after it out
+  its "chain out" pin (bit-banged serial TX) to the next tap. No
+  per-tap address to configure, same principle as the LED chain, just
+  carrying real data (text) instead of raw color bits.
+  - **Pin budget**: ATtiny1614 (SOIC-14) has 14 pins total: VDD, GND,
+    UPDI (shared with reset, freed up by the UPDI header above), and 11
+    GPIO. 2 go to hardware I2C (SDA/SCL, to the OLED), 2 to chain
+    in/chain out, leaving several spare — a much more comfortable
+    budget than Trinket M0's 5 broken-out GPIO.
+- **Topology: daisy chain**, one cable hopping tap to tap, same as the
+  WS2812 version and for the same reason — the chain-position addressing
+  scheme requires it.
+  - **3 conductors used: +5V, GND, chain data** (one direction only —
+    KegStation "down" through the chain; no need for a return path,
+    since each tap only needs to receive, not report back). 2 jacks per
+    tap (IN from upstream, OUT to downstream), **Molex KK-254 (4-pin,
+    2.54mm pitch)** — not RJ14 like KegSensor's jack, switched for board
+    size (KK-254's courtyard is ~1/3 RJ14's) while keeping a real
+    locking latch, unlike JST-PH (used only for the short internal OLED
+    cable, where no latch is needed). 4th contact left unused/spare.
+  - **Same known IN/OUT-swap fragility as the WS2812 version, re-accepted
+    for the same reason**: chain-in and chain-out are different pins on
+    the Trinket, not symmetric, so a swapped cable breaks that tap and
+    everything downstream of it. Worth keying/labeling the jacks clearly
+    at install time.
+  - **Chain fragility**: a disconnected or dead tap breaks every tap
+    downstream of it, same as any physical daisy chain — already
+    discussed and accepted in the WS2812 revision, still true here.
+- **Power: 5V** on the shared rail, matching the Pi's own 5V — the OLED
+  module runs fine off 5V directly (most SSD1306 breakouts have their
+  own onboard 3.3V regulator). ATtiny1614's own VDD range/regulation
+  need still needs confirming (see Still Open) - it may need a small
+  local 3.3V regulator on the per-tap board, unlike Trinket M0 which
+  handled that internally.
+- **OLED-to-board cable: 4-pin JST-PH (2mm pitch).** The lid-to-body run
+  is under 2cm, short enough that a compact connector fits better than
+  a pin header — hand-solderable, unlike the finer 1mm-pitch JST-SH
+  alternative.
+- **Mounting location: outside the keezer** — the OLED/ATtiny1614
+  assembly sits on the tap's own exterior face, same reasoning as every
+  earlier revision: no part of the wiring needs to enter the cold zone.
+- **Mechanical split: main board inside the case body, OLED mounted on
+  the case lid, connected between them by a short wire harness** (not a
+  single rigid board carrying both) - decided when starting the case/lid
+  design, still in progress (see Still Open). The OLED's 4-pin header
+  (VCC/GND/SCL/SDA) on the main board is exactly this cable's connection
+  point, not a directly-soldered display.
+- **Physical cable routing: hidden along the collar's exterior, under a
+  paintable plastic cord cover** — not routed through the collar's
+  interior cavity (both ends are already outside, so dipping into the
+  cold zone would be pure downside), and not bored through the solid
+  wood either (the collar here is already built and finished — a long
+  blind bore through installed wood risks a visible drilling mistake
+  with no way to redo it, unlike drilling before assembly). Cable runs
+  along an inconspicuous exterior seam (e.g. where the collar meets the
+  freezer body) and is covered by an off-the-shelf paintable plastic
+  cord cover, painted to match — reads as a deliberate trim detail
+  instead of an exposed wire.
 - **Not yet built or prototyped** — this whole design came out of
   conversation, not a physical test yet. Same "verify against real
   hardware before calling it done" standard as everything else in this
@@ -207,21 +209,25 @@ that preceded the KegSensor module).
 
 ## Still open
 
-- **The RS-485 chain's current/wattage budget at 12V** — voltage is
-  decided, but the actual supply still needs sizing once chain length
-  and final board count (currently 5) are locked in.
-- KiCad schematic/PCB project — not started. Next concrete step once the
-  component list above is final.
-- Physical mounting method at/over each tap.
-- The physical cable path from KegStation out to keg 1's board (then
-  daisy-chained on from there, so only that first leg needs separate
-  scoping).
-- Exact MOSFET/regulator part numbers (Q1, R1's exact value tolerance,
-  whether D1 is populated) — the circuit topology in
-  `power_protection.png` is settled, specific parts aren't yet.
-- **Status LED heartbeat timeout value and KegStation's Modbus poll
-  interval** — the blinking-on-missed-heartbeat behavior above is
-  decided, the actual numbers aren't; the timeout needs to be set as a
-  multiple of whatever poll interval KegStation ends up using, which
-  isn't decided either (depends on the KegStation daemon design, see
-  `../kegstation/README.md`).
+- **Exact strip part/density** — 140-200 LEDs/m suggested, not a
+  specific product picked yet. Also: how many LEDs to actually light
+  (cut length vs. how many are addressed) - a longer strip physically
+  mounted doesn't have to mean every LED is used.
+- **Pigtail-to-chain-connector details** — wire gauge, how the cut
+  strip's pads get connected to a 3-wire pigtail, and what connector
+  that pigtail terminates in (the JST-PH work from revision 5 may or may
+  not carry over - not reconfirmed for this mounting approach).
+- **Mounting hardware for the strip on the collar** — most strips are
+  adhesive-backed, but whether that alone is enough for a keezer
+  (temperature swings, humidity) or something more is needed isn't
+  decided.
+- **Reverse-polarity protection** — not reconsidered for this revision.
+- **KegStation's own side**: the code that computes each keg's % and
+  drives the WS2812 chain, and what happens to the brew-name/weight
+  display now that neither an OLED nor a touchscreen is in the current
+  plan (see [`../kegstation/README.md`](../kegstation/README.md) — likely
+  back to web-dashboard-only for that detail).
+- `case.scad`, the lid board (`keg_display_lid_module`), the ATtiny1614
+  main board's KiCad files, and the revision-5 LED-bar KiCad files
+  (`generate_schematic.py`/`generate_pcb.py` in this directory) are all
+  obsolete as of this revision — kept in git history, not deleted.

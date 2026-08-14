@@ -4,10 +4,11 @@ Part of the **Sallaup KegSense** keg-monitoring system, made by
 **Sallaup Electronics**.
 
 **KegStation** is the central unit: reads all 5 KegSensor modules over
-the wired in-keezer hub connection, drives a small OLED at each keg's
-own tap (weight + brew name, right where you're pouring from — not one
-shared display listing all kegs), and hosts a web dashboard mirroring
-the same information remotely.
+the wired in-keezer hub connection, streams each keg's brew name +
+weight down the KegDisplay chain (see
+[`../kegdisplay/`](../kegdisplay/)) so each tap's own OLED can show its
+own keg directly, and hosts a web dashboard mirroring the same
+information remotely.
 
 This is a planning doc — no hardware or software has been built yet.
 Captures decisions made so far so they aren't lost before implementation
@@ -89,24 +90,32 @@ for the equivalent docs that preceded the KegSensor module).
     calibrated weight (once calibration exists) per keg, since `kegcal`
     needs to read the live raw value to know what to record.
   - **Not yet built** — see below.
-- **One OLED per keg, mounted at/over that keg's own tap** — not one
-  shared display listing all 5 kegs. Each shows just its own keg's brew
-  name + weight/% remaining, right where you're actually pouring from.
-  Implemented as **KegDisplay**, a combined Arduino Nano + OLED board,
-  one per keg, daisy-chained back to KegStation over RS-485 — see
-  [`../kegdisplay/README.md`](../kegdisplay/README.md) for the full
-  design (connectors, addressing scheme, power, reverse-polarity
-  protection). Not yet built or prototyped.
-  - **New wiring run this creates**: KegStation sits outside the keezer
-    (see System overview in the root README), but taps are mounted at
-    the keezer itself — so unlike a single-shared-display plan, each
-    display now needs its own wired run out to its tap. Still a wired
-    connection (consistent with the no-WiFi-in-the-keezer rule, which is
-    about radios, not wired signals) but a physical run that didn't need
-    to exist before this decision.
-  - **Consequence for calibration UI**: weakens (doesn't rule out) the
-    keypad+OLED idea below, since there's no longer one central OLED at
-    KegStation to pair a keypad with — see Still Open.
+- **Per-tap detail now lives entirely at the tap, not at KegStation.**
+  Each tap has its own OLED (driven by its own Trinket M0 — see
+  [`../kegdisplay/README.md`](../kegdisplay/README.md)) that shows that
+  keg's brew name + weight directly, all the time. This superseded an
+  earlier button + resistor-ladder + KegStation-touchscreen scheme (see
+  git history) once each tap got a real display back — no button to
+  read, no ADC needed at KegStation for this purpose.
+  - **Wiring run this still creates**: KegStation sits outside the
+    keezer (see System overview in the root README), but taps are
+    mounted at the keezer itself, so a physical run out to each tap is
+    still needed regardless of what's at the far end — a wired
+    connection either way (consistent with the no-WiFi-in-the-keezer
+    rule, which is about radios, not wired signals).
+  - **KegStation's job for this chain**: stream each keg's current brew
+    name + weight down the KegDisplay daisy chain in tap order (see the
+    chain-addressing scheme in KegDisplay's own README) — not yet
+    implemented, see Still Open.
+- **KegStation's own display and the calibration front-end are open
+  again** — the 4-5" touchscreen plan was chosen specifically to show
+  per-tap detail on request *and* double as a calibration UI; now that
+  per-tap detail lives on each tap's own OLED, the touchscreen only has
+  the calibration reason left, which may not be enough to justify it on
+  its own vs. reverting to the original CLI-first (`kegcal`) plan or a
+  web-only calibration page. See Still Open — deliberately not
+  re-decided yet rather than carrying the touchscreen forward on a
+  reason that no longer fully applies.
 
 ## Still open
 
@@ -126,36 +135,22 @@ for the equivalent docs that preceded the KegSensor module).
 - Which Pi model specifically (4 / 5 / Zero 2 W) — affects the GPIO
   library choice for the C daemon (see above).
 - Whether to build a small interface PCB (breaking out the hub's RJ45
-  connection + a USB-to-RS485 adapter/HAT to the Pi's GPIO header) or
-  wire it directly on a protoboard/HAT.
-- **KegDisplay specifics** — see
-  [`../kegdisplay/README.md`](../kegdisplay/README.md)'s own Still Open
-  section (power supply voltage, KiCad project, physical mounting, exact
-  part numbers, status-LED heartbeat timeout). Protocol is decided
-  (Modbus RTU, KegStation as master) — its poll interval still needs
-  picking, which also sets KegDisplay's heartbeat-LED timeout.
+  connection and the KegDisplay chain's UART-ish GPIO pins to the Pi's
+  header) or wire it directly on a protoboard/HAT — these are native Pi
+  GPIO peripherals, no special adapter needed, unlike the original
+  RS-485 design's USB-RS485 requirement.
+- **KegStation's own KegDisplay-chain code**: the piece that reads the
+  daemon's readings file and streams it down the chain in tap order —
+  not yet written (see [`../kegdisplay/README.md`](../kegdisplay/README.md)
+  for the chain protocol's own still-open details).
+- **Whether KegStation needs a display of its own at all now** — the
+  4-5" touchscreen's main reason (showing per-tap detail on request) is
+  gone now that each tap has its own OLED; only the calibration-UI
+  reason is left. Options: keep the touchscreen anyway (still a nice
+  standalone calibration UI), revert to the original CLI-first `kegcal`
+  plan, or build a web-only calibration page. Not re-decided yet.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
   5×DT KegSensor scheme, and the on-disk format/path for the readings
   file the C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
-  case already built).
-- **Calibration front-end: keypad+OLED vs. web page vs. both — not yet
-  decided, and the per-tap OLED decision above weakens the keypad+OLED
-  case specifically**: that idea assumed one central OLED at KegStation
-  itself to pair a keypad with; now that the OLEDs are out at each tap
-  instead, there's no obvious display left at KegStation to use for it
-  (short of adding a 6th, KegStation-only OLED just for this, which
-  hasn't been proposed). Both are still viable on top of the same
-  `kegcal` CLI commands (see above), so this doesn't block building the
-  daemon/CLI itself. The trade-off raised so far: a physical keypad + a
-  local OLED means calibration works fully standalone, with no phone or
-  network needed — arguably in the spirit of KegStation being a
-  self-contained unit, not dependent on Wi-Fi/a browser for its core
-  job. A web page is less hardware to build (reuses the same "small
-  local web server + form" pattern already used for the Comitup Wi-Fi
-  setup page) but means calibration requires a working network and a
-  phone/laptop in hand. Was leaning toward keypad+OLED as the real
-  interface with a web page as a later convenience layer; the per-tap
-  OLED decision makes that lean weaker (extra hardware just for this
-  now, rather than reusing something already there) but doesn't rule it
-  out — still not committed either way.
+  case already built) — depends on the touchscreen decision above.
