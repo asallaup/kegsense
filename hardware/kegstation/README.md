@@ -219,6 +219,39 @@ for the equivalent docs that preceded the KegSensor module).
   small IC, only needed at that single connection point, powered off the
   same shared 5V rail. **Not yet added to the BOM/wiring** — see the
   updated `power_wiring_diagram.png`.
+- **PIR motion sensor for occupancy-based LED power saving: HC-SR501,
+  settled.** The KegDisplay chain doesn't need to stay lit when nobody's
+  in the room — running all 5 taps' LEDs continuously is the dominant
+  chunk of the power budget the GST60A05 (above) is already sized close
+  to the edge of. The HC-SR501 (~$1-2, 3-pin VCC/GND/OUT) wired to one
+  Pi GPIO pin detects room entry; its digital output is already
+  3.3V-logic level, so — unlike the WS2812 DATA line — **no level
+  shifter needed** for this one. Another small external-to-the-Pi
+  component, but a simple, well-supported one.
+  - **Behavior**: motion resets an inactivity timer in the LED-driving
+    code; while the timer's running, the chain shows the normal
+    fill-bar; on timeout with no further motion, the chain **dims to a
+    low brightness** (settled — not a full blank), cutting most but not
+    all of the LED power draw while keeping a faint always-visible
+    fill-level readable at a glance, then returns to normal brightness
+    on the next motion event.
+  - **Mounting location: on the KegStation enclosure itself, settled.**
+    No remote sensor needed — KegStation already sits in the same room
+    as the keezer (see System overview in the root README), so a PIR
+    mounted on its own case covers room-entry detection without a
+    separate wired/wireless sensor unit.
+  - **Inactivity timeout: user-configurable, settled** — not a
+    hardcoded constant. Lives in the same config file the daemon
+    already re-reads on its normal cycle (alongside `calibration.json`,
+    see Tare/weight calibration above), so it's adjustable without a
+    code change or restart-losing edit — a sensible default ships, but
+    the actual duration is a setting, not a fixed value baked into the
+    LED-driving code.
+  - **Dimmed brightness level: 15% of normal, settled** — low end of
+    the tradeoff (favors power savings over glance-readability from
+    across the room), still configurable like the timeout above rather
+    than hardcoded, 15% is just the shipped default.
+  - **Not yet decided**: the default timeout duration.
 - **Two distinct reset mechanisms: soft reset via power cycling (no
   dedicated button), factory reset via a dedicated physical button.**
   - **Soft reset = power off/on.** Just reboots the Pi/services, no data
@@ -290,7 +323,10 @@ for the equivalent docs that preceded the KegSensor module).
   protocol's own still-open details). **Must include a current/
   brightness cap** (color choice + max brightness ceiling) keeping
   total worst-case draw safely under the GST60A05's 6A — see Power
-  above for why this is a hard requirement, not a nice-to-have.
+  above for why this is a hard requirement, not a nice-to-have. **Must
+  also include the PIR-driven occupancy timer** (see PIR motion sensor
+  above) that dims the chain when the room's been empty past the
+  timeout.
 - **Calibration UI's own screen flow** (keg select → tare/setfull →
   confirm) on the now-settled Touch Display 2 — not yet designed.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
