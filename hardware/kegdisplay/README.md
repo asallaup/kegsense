@@ -4,13 +4,16 @@ Part of the **Sallaup KegSense** keg-monitoring system, made by
 **Sallaup Electronics**.
 
 **KegDisplay** is the per-keg status indicator: a vertical WS2812 LED
-strip mounted on the collar's side at each tap, showing that keg's
-remaining % as a fill-level bar (more LEDs lit from the bottom = more
-left — same read as a fuel gauge). No per-tap MCU, no custom PCB —
+bar in its own enclosure, mounted on the collar's side at each tap,
+showing that keg's remaining % as a fill-level bar (more LEDs lit from
+the bottom = more left — same read as a fuel gauge). No per-tap MCU —
 **KegStation** (the central Raspberry Pi — see
-[`../kegstation/`](../kegstation/)) drives the whole chain directly,
-and the strip itself is an off-the-shelf part, just cut to length. See
-the revision note below for how this replaced the OLED+MCU approach.
+[`../kegstation/`](../kegstation/)) drives the whole chain directly.
+An off-the-shelf WS2812 strip is glued or screwed to the front of a
+small custom PCB inside the enclosure, which gives it a rigid mount and
+carries both chain connectors (see the revision note below for how this
+settled). Brew-name display is a separate, experimental add-on — see
+[`../kegtag/`](../kegtag/).
 
 This is a planning doc — no hardware or software has been built yet.
 Captures decisions made so far so they aren't lost before implementation
@@ -18,8 +21,8 @@ starts (see [`../kegsensor/wiring.md`](../kegsensor/wiring.md) and
 [`../keghub/README.md`](../keghub/README.md) for the equivalent docs
 that preceded the KegSensor module).
 
-**Revision note**: this design has gone through three full rewrites, kept
-in git history rather than deleted outright:
+**Revision note**: this design has gone through several full rewrites,
+kept in git history rather than deleted outright:
 1. Originally an Arduino Nano + MAX485 board per tap, daisy-chained over
    RS-485 with a custom chain-position auto-addressing scheme.
 2. Then a bare OLED module per tap wired star-topology through a
@@ -71,23 +74,145 @@ in git history rather than deleted outright:
    there's no custom PCB to design/fab at all - just a cut strip with a
    few wires soldered on at each end; (2) a vertical fill-level bar
    reads more intuitively than a horizontal one (same mental model as a
-   fuel gauge or thermometer). Nothing below reflects any earlier
-   revision.
+   fuel gauge or thermometer).
+7. **This version**: brought a custom PCB back after all — not because
+   the vertical layout was wrong, but to solve two things a bare
+   commercial strip couldn't: a rigid mounting surface inside the box,
+   and a way to get *both* chain connectors onto the box's bottom edge
+   (see "connectors on left/right" below — both need to end up at the
+   bottom, and a floppy 3-wire strip has no natural way to route a
+   return path back down). Individual WS2812B LEDs are placed directly
+   on a 2-layer PCB instead: front layer carries the LED chain bottom to
+   top; after the top LED, a via drops the single DATA_OUT signal to the
+   back layer, which routes it back down to the bottom-right connector.
+   VCC/GND don't need this detour — they're shared rails running the
+   full board height on the front layer, tapped directly by both
+   connectors.
+8. **This version**: swapped the 23 individually-placed LED footprints
+   for an off-the-shelf WS2812 strip, glued or screwed to the front of
+   the custom PCB. The PCB still solves the same two problems revision 7
+   introduced it for (rigid mounting surface, both connectors on the
+   bottom edge) — that didn't change. What changed: hand-laying out 23
+   LED footprints/nets was more work than buying an assembled strip and
+   mounting it. The PCB's job shrinks to rigid backer + both connectors
+   + a soldered-wire path (the strip's own DIN/DOUT leads soldered to
+   pads) instead of continuous copper running through 23 LED footprints.
+   Nothing below reflects revision 7's individual-LED approach.
 
 ## Decisions so far
 
-- **Per tap: a commercial WS2812B LED strip (140-200 LEDs/m), cut to
-  length, mounted vertically on the collar's side.** No custom PCB, no
-  MCU. KegStation lights however many LEDs correspond to the keg's
-  remaining % as a bottom-up fill bar. Same chain-position addressing as
-  revision 3/5 — purely protocol-level, no firmware/logic at the tap.
-- **Topology: daisy chain, 3 conductors (+5V, GND, WS2812 data)** — cut
-  strip has these 3 pads at each end; a short pigtail at each end
-  carries them to a chain connector.
-- **Power: 5V**, matching the Pi's rail, same as every earlier revision.
+- **Per tap: an off-the-shelf WS2812 LED strip, glued or screwed to the
+  front of a custom 2-layer PCB**, mounted vertically inside an
+  enclosure on the collar's side. No per-tap MCU — KegStation lights
+  however many LEDs correspond to the keg's remaining % as a bottom-up
+  fill bar. Same chain-position addressing as every earlier revision —
+  purely protocol-level, no firmware/logic at the tap.
+- **Topology: daisy chain, 3 conductors (+5V, GND, WS2812 data)**,
+  same as every earlier revision.
+- **Power: 5V**, matching the Pi's logic level, same as every earlier
+  revision — but sourced from its own dedicated supply injected into
+  the chain, not drawn through the Pi itself (see
+  [`../kegstation/README.md`](../kegstation/README.md) for why: LED
+  current draw exceeds what the Pi's own PSU/GPIO can safely provide).
 - **Mounting location: collar's right side, vertical**, not the tap
-  face — ~50mm width x ~130mm height available there, established this
-  session as the actual space budget (see revision note).
+  face — ~50mm width x ~130mm height available there. Confirmed against
+  the real keezer, not guessed: tap spacing ~10cm apart horizontally
+  (real photo, 5 taps through a single wood plank, plus a direct
+  measurement), collar board height 13cm (matches the ~130mm figure
+  almost exactly), and the board is confirmed finished wood (despite
+  looking unfinished in the photo) — the earlier reasoning against
+  drilling a blind bore for cable routing (a visible mistake in
+  installed, finished wood, with no way to redo it) holds as originally
+  reasoned. Board thickness is the only dimension still unmeasured (see
+  Still Open).
+- **Housed in a rectangular enclosure** — protects the PCB and gives the
+  LEDs a diffuser window instead of exposed dots. Box footprint sized to
+  the ~50x130mm mounting budget above.
+- **Both connectors live on the box's bottom edge, one on the left, one
+  on the right, each with a short wire pigtail to the next tap's box** —
+  not top/bottom of the box, even though the PCB inside runs vertically.
+  Taps sit ~10cm apart *horizontally* along the collar, so the
+  daisy-chain cable between one tap's box and the next needs to run
+  sideways; bottom-left/bottom-right connector placement matches that
+  real cable path instead of forcing an awkward top-to-bottom-then-across
+  route.
+- **PCB signal routing**: left connector (chain in) feeds pads at the
+  strip's bottom (DIN) end via soldered wire leads. The strip itself
+  carries data up its own length front-side; its DOUT lead at the top
+  end solders to a pad, where a via drops DATA_OUT to the back layer,
+  routing it straight back down to the right connector (chain out) —
+  same detour concept as revision 7, now via a soldered wire+pad instead
+  of continuous LED-to-LED copper. VCC/GND: the strip's own power leads
+  solder to pads tied to shared rails on the front layer spanning the
+  full board height, tapped directly by both connectors.
+- **Mounting method (glue vs. screw) depends on which strip is
+  sourced** — a flexible, adhesive-backed strip (the common type) only
+  supports gluing; a rigid-PCB or aluminum-channel strip variant would
+  support screws if one is sourced instead. Not decided (see Still
+  Open).
+- **PCB laid out and DRC-clean, board size settled: 34x132mm**, offset
+  from the origin (x: 9.5-43.5mm, y: -2-130mm) — resized/shifted in the
+  KiCad GUI from the original 50x130mm placeholder and confirmed as the
+  right size. `generate_bar_schematic.py` / `generate_bar_pcb.py` in
+  this directory build this board, kept in sync with that GUI edit.
+  Which specific off-the-shelf strip to buy is still open (see Still
+  Open) but must now fit this board size, not the other way around.
+  J1/J2 still near the bottom, outward-
+  facing (cable exits sideways), nudged off strict edge-flush/shared-Y
+  placement in the GUI to clear each other's and MH2's courtyards after
+  the resize. R1/C1 between them (unchanged). TP1-3 (strip's bottom
+  GND/VCC/DIN leads) and TP4-6 (strip's top GND/VCC/DOUT leads) remain a
+  tight 4mm-pitch cluster of hand-solder test points, replacing the 23
+  LED footprints. Mounting holes MH1/MH2 both moved to the board's
+  horizontal center in the GUI. ERC/DRC clean aside from known-benign
+  warnings (`lib_footprint_mismatch` from UUID regeneration;
+  `silk_over_copper` from the connectors' own default pin-1 silkscreen;
+  `unconnected_items` since, like every earlier revision's generator
+  script, this places components and assigns nets but does **not** emit
+  copper traces/vias — it validates physical fit and clearance, not
+  routing completeness; the DATA_OUT via + back-layer return trace is a
+  routing detail for real layout, not modeled here).
+
+## Superseded (revision 7, individual LEDs on PCB) — kept for reference
+
+- **Per tap: 23x WS2812B-2020 (2.0x2.0mm) LEDs at 5mm pitch (200 LEDs/m)
+  soldered directly onto the custom 2-layer PCB** — the smaller 2020
+  package (vs. revision 5's 3.5x3.5mm Mini) gave comfortable clearance
+  at this tight pitch. Superseded by revision 8's off-the-shelf strip
+  glued/screwed to the same PCB — hand-laying out 23 individual LED
+  footprints/nets was more generator-script work than buying an
+  assembled strip; the PCB's role (rigid mount, both connectors on the
+  bottom edge) carries forward unchanged.
+- **PCB signal routing (individual-LED version)**: left connector fed
+  the bottom LED's DIN directly; data climbed LED to LED on the front
+  layer to the top LED's DOUT, where a via dropped DATA_OUT to the back
+  layer, routed back down to the right connector. Same detour concept
+  revision 8 keeps, just via continuous LED-to-LED copper instead of a
+  strip's own leads soldered to pads.
+- **PCB laid out and DRC-clean for this construction**:
+  `generate_bar_schematic.py` / `generate_bar_pcb.py` in this directory
+  build *this* (now superseded) board — 23 LEDs at 5mm pitch, board
+  50x130mm, J1 bottom-left / J2 bottom-right both facing outward
+  (JST-PH 3-pin horizontal, same footprint/angles as revision 5), R1/C1
+  between them. ERC/DRC clean aside from known-benign warnings
+  (`power_pin_not_driven` on VCC/GND — same accepted quirk as every
+  earlier revision's schematic; `lib_footprint_mismatch` from UUID
+  regeneration; `silk_over_copper` from the connectors' own default
+  pin-1 silkscreen crossing their own pads). **Not yet regenerated for
+  revision 8** — these scripts still model the individual-LED
+  construction, not the strip-on-backer-PCB one (see Still Open).
+
+## Superseded (revision 6, off-the-shelf strip) — kept for reference
+
+- **Per tap: a commercial WS2812B LED strip (140-200 LEDs/m), cut to
+  length.** No custom PCB. Superseded by revision 7's custom PCB, needed
+  to give the strip a rigid mounting surface and to route a return path
+  to both bottom connectors (see revision note above) — otherwise the
+  core idea (vertical fill bar, ~50x130mm collar-side mounting, no
+  per-tap MCU) carries forward unchanged.
+- **Topology detail specific to a cut strip**: 3 pads at each end, a
+  short pigtail soldered on at each end carrying them to a chain
+  connector. Moot once LEDs are placed directly on a PCB instead.
 
 ## Superseded (revision 5, custom PCB LED bar) — kept for reference
 
@@ -209,25 +334,50 @@ treat as historical, not a current target to keep building against.
 
 ## Still open
 
-- **Exact strip part/density** — 140-200 LEDs/m suggested, not a
-  specific product picked yet. Also: how many LEDs to actually light
-  (cut length vs. how many are addressed) - a longer strip physically
-  mounted doesn't have to mean every LED is used.
-- **Pigtail-to-chain-connector details** — wire gauge, how the cut
-  strip's pads get connected to a 3-wire pigtail, and what connector
-  that pigtail terminates in (the JST-PH work from revision 5 may or may
-  not carry over - not reconfirmed for this mounting approach).
-- **Mounting hardware for the strip on the collar** — most strips are
-  adhesive-backed, but whether that alone is enough for a keezer
-  (temperature swings, humidity) or something more is needed isn't
-  decided.
+- **Which off-the-shelf strip to source** — not chosen. Board size
+  (34x132mm) is now settled, so this is a fit-to-board search, not an
+  open-ended one: needs a strip whose usable length fits the ~132mm
+  board height, with end-lead spacing compatible with the TP1-3/TP4-6
+  hand-solder clusters (revisit their exact positions in
+  `generate_bar_pcb.py` once a strip is picked, if its real lead spacing
+  differs from the current placeholder). Also determines whether glue or
+  screws are possible (see "Mounting method" above — needs a rigid-PCB
+  or aluminum-channel strip for screw-mounting; a standard flexible
+  adhesive-backed strip only glues).
+- **Enclosure: first-draft 3D-printable case modeled, NOT verified
+  against real hardware yet.** `case_bar.scad` /
+  `generate_case_bar.sh` (this directory) build two parts: `base`
+  (solid wall — no window, side walls with left/right cutouts for
+  J1/J2's cable exit, two PCB standoff posts at MH1/MH2, four corner
+  posts for the lid, two mounting flanges on its top/bottom edges with
+  wood-screw clearance holes) and `lid` (a frame with the diffuser
+  window cut through it over the strip's span, four screw holes to
+  close onto the base's corner posts). **The base, not the lid, is the
+  face that mounts to the collar** — the lid carries the window and
+  must face outward into the room for the LEDs to actually be visible;
+  mounting the lid flush against the collar would hide them against the
+  wood. Outer footprint ~43x141mm
+  (board 34x132mm + margin + wall), depth ~15mm (component/strip
+  clearance + board + standoff). Renders cleanly (`openscad`, both
+  parts report `Simple: yes`) — see `case_bar_base_preview.png` /
+  `case_bar_lid_preview.png`. Component clearance depths (JST-PH body
+  height, strip thickness) are typical values, not measured off real
+  parts — same "verify before calling it done" standard as the rest of
+  this project; don't print for real without checking against actual
+  hardware first. Diffuser window material/fit itself is still
+  unaddressed (just an open cutout right now, no diffuser panel
+  modeled). Two-point standoff mounting (not four-corner) may need a
+  card-edge rail added later if the board flexes over its 132mm length
+  in practice.
+- **Collar board's thickness** — not measured (height 13cm and finished
+  status are now confirmed, see above).
+- **Wire gauge for the pigtails** at J1/J2 — not decided.
 - **Reverse-polarity protection** — not reconsidered for this revision.
 - **KegStation's own side**: the code that computes each keg's % and
-  drives the WS2812 chain, and what happens to the brew-name/weight
-  display now that neither an OLED nor a touchscreen is in the current
-  plan (see [`../kegstation/README.md`](../kegstation/README.md) — likely
-  back to web-dashboard-only for that detail).
+  drives the WS2812 chain — not written yet. Brew-name/level display
+  (ESL hub, tag protocol) is tracked separately, see
+  [`../kegtag/`](../kegtag/).
 - `case.scad`, the lid board (`keg_display_lid_module`), the ATtiny1614
   main board's KiCad files, and the revision-5 LED-bar KiCad files
   (`generate_schematic.py`/`generate_pcb.py` in this directory) are all
-  obsolete as of this revision — kept in git history, not deleted.
+  obsolete — kept in git history, not deleted.

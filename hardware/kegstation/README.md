@@ -4,11 +4,13 @@ Part of the **Sallaup KegSense** keg-monitoring system, made by
 **Sallaup Electronics**.
 
 **KegStation** is the central unit: reads all 5 KegSensor modules over
-the wired in-keezer hub connection, streams each keg's brew name +
-weight down the KegDisplay chain (see
-[`../kegdisplay/`](../kegdisplay/)) so each tap's own OLED can show its
-own keg directly, and hosts a web dashboard mirroring the same
-information remotely.
+the wired in-keezer hub connection, drives each tap's WS2812 fill-bar
+LEDs directly (see [`../kegdisplay/`](../kegdisplay/) — no per-tap
+MCU, KegStation lights however many LEDs correspond to that keg's
+remaining %), and hosts a web dashboard mirroring the same information
+remotely. Brew-name display is a separate concern, handled (if built)
+by the experimental [`../kegtag/`](../kegtag/) add-on and its own hub,
+not by KegStation streaming text down the LED chain.
 
 This is a planning doc — no hardware or software has been built yet.
 Captures decisions made so far so they aren't lost before implementation
@@ -17,8 +19,18 @@ for the equivalent docs that preceded the KegSensor module).
 
 ## Decisions so far
 
-- **Platform**: Raspberry Pi 4, 5, or Zero 2 W — any of these have
-  built-in Wi-Fi + Bluetooth, so no wireless add-on hardware is needed.
+- **Platform: Raspberry Pi 4 (4GB), settled — not Pi 5 or Zero 2 W.**
+  Has built-in Wi-Fi + Bluetooth like the other candidates, so no
+  wireless add-on hardware is needed either way. Picked over Pi 5 for
+  two concrete reasons, not price (the two are close, ~$55 vs ~$80):
+  power budget (Pi 5 draws roughly double Pi 4's idle power, ~4.8W vs
+  ~2.4W, and wants a 27W supply vs Pi 4's 15W — directly inflates the
+  shared-PSU sizing above for headroom this project's workload doesn't
+  need) and GPIO library maturity (`pigpio`, the traditional
+  battle-tested choice for the HX711's precise bit-banged timing, does
+  not support Pi 5's RP1 GPIO chip at all — Pi 4 keeps it available).
+  Picked over Zero 2 W because the Touch Display 2 needs a DSI
+  connector, which the Zero series doesn't have.
 - **Connectivity**: reads the 5× KegSensor modules over the wired hub
   connection (shared SCK + 5× DT + power, see
   `hardware/kegsensor/wiring.md` and `hardware/keghub/README.md`) —
@@ -59,22 +71,27 @@ for the equivalent docs that preceded the KegSensor module).
   - **Interface to the rest of the system**: a small daemon, written in
     C, that reads all 5 kegs on a fixed interval and writes current
     readings to a local JSON/text file. Whatever ends up driving the
-    OLED and web dashboard just reads that file — simplest possible
-    hand-off, easy to debug by hand (`cat` the file), no IPC to build or
-    maintain. Chosen over a Unix socket/local IPC (more real-time, more
-    moving parts) and over having the C program also drive the OLED/
-    dashboard directly (would remove the option to pick a different,
-    easier language for that higher-level part later).
-  - **GPIO library**: not yet chosen, but worth flagging now — `pigpio`
-    (the traditional choice for precise bit-banged timing on a Pi) does
-    not support the Raspberry Pi 5's GPIO chip (RP1); if a Pi 5 is in play,
-    `lgpio` (pigpio's suggested successor) or direct `libgpiod` should be
-    used instead. Decide this once the Pi model (below) is locked in.
-- **Tare/weight calibration: CLI-first.** A small companion program
-  (`kegcal`) run on the Pi itself (SSH or a plugged-in keyboard), not a
-  dashboard UI — the dashboard doesn't exist yet, and whenever it does it
-  can shell out to the same commands rather than needing its own
-  calibration logic.
+    KegDisplay LED chain and web dashboard just reads that file —
+    simplest possible hand-off, easy to debug by hand (`cat` the file),
+    no IPC to build or maintain. Chosen over a Unix socket/local IPC
+    (more real-time, more moving parts) and over having the C program
+    also drive the LED chain/dashboard directly (would remove the
+    option to pick a different, easier language for that higher-level
+    part later).
+  - **GPIO library: `pigpio`.** The traditional, most battle-tested
+    choice for the HX711's precise bit-banged clock timing — viable now
+    that Pi 4 is settled (below), unlike on Pi 5 where it doesn't
+    support the RP1 GPIO chip at all.
+- **Tare/weight calibration: must work fully standalone at the unit
+  itself — no web browser and no external device (phone/laptop/SSH)
+  required.** This is a hard requirement, not a convenience preference,
+  so the on-unit touchscreen (below) is the primary calibration
+  interface. A `kegcal` CLI program still exists underneath as the
+  actual implementation (and an SSH-accessible fallback for
+  development/debugging) — the touchscreen UI shells out to the same
+  commands rather than duplicating calibration logic, same relationship
+  originally planned between `kegcal` and a future dashboard, just with
+  the touchscreen as the primary caller instead of the web dashboard.
   - `kegcal tare <keg>` — reads that keg's *current* raw ADC value (from
     the daemon's readings file) and stores it as the tare reference.
   - `kegcal setfull <keg> <grams>` — same, but stores it as the "full"
@@ -90,32 +107,161 @@ for the equivalent docs that preceded the KegSensor module).
     calibrated weight (once calibration exists) per keg, since `kegcal`
     needs to read the live raw value to know what to record.
   - **Not yet built** — see below.
-- **Per-tap detail now lives entirely at the tap, not at KegStation.**
-  Each tap has its own OLED (driven by its own Trinket M0 — see
-  [`../kegdisplay/README.md`](../kegdisplay/README.md)) that shows that
-  keg's brew name + weight directly, all the time. This superseded an
-  earlier button + resistor-ladder + KegStation-touchscreen scheme (see
-  git history) once each tap got a real display back — no button to
-  read, no ADC needed at KegStation for this purpose.
+- **Per-tap indicator is just an LED fill level now, no per-tap
+  detail/MCU at all.** Each tap's WS2812 bar (see
+  [`../kegdisplay/README.md`](../kegdisplay/README.md)) is lit directly
+  by KegStation over the shared chain — no brew name, no numeric
+  weight, no OLED, no per-tap microcontroller. This superseded both the
+  earlier button + resistor-ladder + KegStation-touchscreen scheme and
+  the later ATtiny1614+OLED-per-tap scheme (see git history and
+  KegDisplay's own revision note) — no button/detail hardware to read
+  at any tap.
   - **Wiring run this still creates**: KegStation sits outside the
     keezer (see System overview in the root README), but taps are
     mounted at the keezer itself, so a physical run out to each tap is
     still needed regardless of what's at the far end — a wired
     connection either way (consistent with the no-WiFi-in-the-keezer
     rule, which is about radios, not wired signals).
-  - **KegStation's job for this chain**: stream each keg's current brew
-    name + weight down the KegDisplay daisy chain in tap order (see the
-    chain-addressing scheme in KegDisplay's own README) — not yet
+  - **KegStation's job for this chain**: light however many LEDs
+    correspond to each keg's remaining % as a bottom-up fill bar, in
+    tap order down the KegDisplay daisy chain (see the chain-position
+    addressing scheme in KegDisplay's own README) — not yet
     implemented, see Still Open.
-- **KegStation's own display and the calibration front-end are open
-  again** — the 4-5" touchscreen plan was chosen specifically to show
-  per-tap detail on request *and* double as a calibration UI; now that
-  per-tap detail lives on each tap's own OLED, the touchscreen only has
-  the calibration reason left, which may not be enough to justify it on
-  its own vs. reverting to the original CLI-first (`kegcal`) plan or a
-  web-only calibration page. See Still Open — deliberately not
-  re-decided yet rather than carrying the touchscreen forward on a
-  reason that no longer fully applies.
+- **Power: one shared 5V supply, star-wired — not drawn through the
+  Pi's own GPIO pin/trace.** A single 5V PSU, sized for worst-case total
+  draw (Pi + KegSensor bus + KegDisplay LEDs), feeds two separate direct
+  wire runs: one straight to the Pi (its own 5V input), one straight to
+  the KegDisplay chain's power input — neither run passes through the
+  other. The actual hard requirement was never "two physical supplies,"
+  it was "LED current must never pass through the Pi's own GPIO 5V
+  pin/trace" (see Why below) — one adequately-sized PSU with star wiring
+  satisfies that just as well as two separate PSUs would, with less
+  hardware.
+  - **Why the Pi can't just pass LED current through**: WS2812 LEDs draw
+    up to ~60mA each at full white (20mA × 3 channels). ~18-26 LEDs/tap
+    × 5 taps ≈ 130 LEDs total → up to ~7.8A (~39W) worst case,
+    realistically a few amps even at moderate brightness — more than the
+    Pi's GPIO 5V pin/trace is rated to pass through, regardless of what
+    supplies it. Standard WS2812 practice regardless of platform: the
+    LED chain's power connects directly to its supply, not routed
+    through the controller board.
+  - **Tradeoff accepted by sharing one PSU**: an LED-side short/
+    overcurrent event could brown out the whole shared supply, taking
+    the Pi (touchscreen/calibration/reset) down with it — two
+    independent PSUs would isolate that risk, one shared PSU does not.
+    Accepted here in favor of one fewer component.
+  - **PSU model: Mean Well GST60A05-P1J (5V, 6A, 30W), settled — paired
+    with a mandatory software brightness/current cap.** Theoretical
+    worst case (130 LEDs × 60mA full-white + Pi's ~1.5A) is ~9.3A, well
+    past this unit's 6A rating — Mean Well's built-in overload
+    protection fails safe (hiccup-mode shutdown) rather than
+    dangerously, but a trip still browns out the Pi along with the
+    LEDs (see Tradeoff above), so the LED-driving code (see Still Open)
+    **must** cap total simultaneous current with margin under 6A —
+    e.g. single-channel color instead of white, and/or an explicit
+    brightness ceiling — not just assume typical usage stays low.
+    Picked over the 10A Mean Well LRS-50-5 alternative (which needs no
+    software cap) for its smaller size (125×50×31.5mm captive-cable
+    wall-wart vs. 128×97×38mm screw-terminal box) and simpler
+    plug-and-play wiring (captive DC cable + standard IEC C14 cord,
+    vs. terminating both AC and DC leads by hand).
+  - **Physical implementation: a plain fixed 5V DC power brick
+    (the GST60A05 above), not a USB-C PD charger.** A generic
+    USB-C PD wall charger's default/fallback output (before any
+    negotiation) is typically just 5V at a modest current (often 3A) —
+    getting more current specifically *at* 5V, rather than the charger
+    bumping voltage up instead, needs either a PD-trigger chip
+    negotiating for it or a charger that happens to default that way,
+    neither guaranteed. A plain fixed-5V brick sidesteps that entirely:
+    no negotiation, current rating is just whatever the brick is rated
+    for. Its 5V/GND wires go into a small **non-negotiating USB-C
+    breakout board** (just exposes VBUS/GND pads with basic CC
+    pull-down resistors, no PD chip) mounted as the single external
+    power-entry connector on the KegStation enclosure — the Pi's own
+    onboard USB-C port stays unused/hidden inside the case. From the
+    breakout's pads, two star-wired runs go out: one to the **Pi's GPIO
+    5V pin** (bypassing its onboard USB-C port), one straight to **J1's
+    5V/GND** for the LED chain — same star topology as before, just with
+    a concrete connector at the wall-facing end instead of bare PSU
+    leads.
+  - **Considered and rejected: an internal 220V AC→5V DC module** (e.g.
+    Mean Well RS-25-5), with just a mains cord entering the enclosure
+    instead of an external DC brick. Rejected because it brings mains
+    voltage inside a custom DIY enclosure — a different safety class
+    than a certified external wall-wart, needing its own fusing,
+    creepage/clearance, and an isolated compartment to get right, none
+    of which is worth taking on for a one-off hobby build vs. buying an
+    already UL/CE-certified external supply.
+  - **Also considered and declined: a panel-mount IEC C14 inlet on the
+    enclosure with the PSU module mounted inside it** (safer than the
+    fully-DIY version above, since both the inlet — typically bundled
+    with its own fuse holder/switch — and the PSU module itself would
+    still be pre-certified parts). Declined anyway to keep it simple:
+    the external brick stays external, KegStation's only power connector
+    is the low-voltage USB-C breakout.
+  - See `power_wiring_diagram.png` (`generate_power_wiring_diagram.py`)
+    for the star-topology layout: the Pi and the KegDisplay chain each
+    run their own wire straight back to the shared PSU. The PSU's 5V/GND
+    and the Pi's DATA line stay separate conductors electrically but
+    physically converge at J1 (KegDisplay's existing 3-pin JST-PH
+    chain-in connector) into one cable for the run out to tap 1 —
+    bundling into one physical cable is fine, it's only the electrical
+    source of each conductor that has to stay separate.
+- **One external-to-the-Pi component needed: a logic-level shifter IC
+  on the KegDisplay DATA line.** KegHub/KegSensor need none (3.3V logic
+  throughout, see Connectivity above) — but KegDisplay's WS2812 strip is
+  a 5V logic part, expecting a DATA-high signal above roughly 0.7×VDD ≈
+  3.5V, and the Pi's GPIO only outputs 3.3V. That's marginal enough
+  (a well-known flaky case for Pi+WS2812 projects, especially at the
+  *first* LED — every LED after that regenerates the signal at its own
+  full 5V output) that a small one-chip level shifter (e.g. 74AHCT125 or
+  74HCT14) belongs between the Pi's DATA GPIO pin and J1's DIN. One
+  small IC, only needed at that single connection point, powered off the
+  same shared 5V rail. **Not yet added to the BOM/wiring** — see the
+  updated `power_wiring_diagram.png`.
+- **Two distinct reset mechanisms: soft reset via power cycling (no
+  dedicated button), factory reset via a dedicated physical button.**
+  - **Soft reset = power off/on.** Just reboots the Pi/services, no data
+    touched (WiFi creds, calibration all survive) — no dedicated button
+    needed, a power switch (or just unplugging) already does this.
+  - **Factory reset = a recessed pinhole button** (needs a pin/paperclip
+    to press, like a router's reset — not something bumped by accident),
+    wired to a GPIO the daemon watches. Held ~5-10s: clears WiFi
+    credentials (falls back to Comitup's setup portal) and wipes
+    `calibration.json`. Deliberately a physical button, not a
+    touchscreen menu item — has to work even if the touchscreen UI or
+    software is hung/misconfigured, which is exactly the case a factory
+    reset needs to recover from.
+- **Touchscreen model: official Raspberry Pi Touch Display 2, 5" (SC1975),
+  ~$40.** 91.5×143.5×16mm, 720×1280 IPS, 62.1×110.4mm active area,
+  capacitive 5-point touch, portrait by default. Powered directly off
+  GPIO 5V (folds into the shared-PSU sizing above) with only a DSI
+  ribbon needed for video+touch — no HDMI/USB cable, no separate driver
+  install, Raspberry Pi OS supports it out of the box. Confirmed
+  incompatible with the Pi Zero series (fine, already ruled out — see
+  Platform above), compatible with Pi 1B+ onward including 4 and 5.
+  Chosen over cheaper (~$9) generic HDMI+USB-touch panels from
+  AliExpress: those only claim Pi 2/3 B+ compatibility (Pi 4/5 support
+  unverified), use a bulkier HDMI+USB+GPIO wiring path instead of one
+  ribbon, are typically resistive not capacitive touch, and carry
+  real driver-reliability risk from unmaintained overlays — not worth
+  the ~$30 savings against this project's "verify before committing"
+  standard.
+  - **EU sourcing option confirmed**: RaspberryPi.dk (Danish reseller),
+    SKU 9696, €53.39 incl. VAT — lists RPi 4/RPi 5 compatibility
+    directly, matches spec.
+- **KegStation's own display: a 4-5" touchscreen, settled (again).** The
+  original reason (also showing per-tap detail on request) is gone now
+  that per-tap indication is just a plain LED fill bar with no text —
+  but the standalone-calibration requirement above is reason enough on
+  its own: calibration has to work with nothing but the unit itself, so
+  *some* local screen+input is required, and a touchscreen is simplest
+  (single component, no separate buttons/encoder to wire up). Supersedes
+  the web-only/CLI-only alternatives considered — both were ruled out
+  specifically because they depend on an external device. (If
+  [`../kegtag/`](../kegtag/) ends up built, it adds brew-name/level
+  detail back at the tap, but as an independent wireless add-on with its
+  own hub — unrelated to why the touchscreen exists.)
 
 ## Still open
 
@@ -129,28 +275,34 @@ for the equivalent docs that preceded the KegSensor module).
   before calling it done, not just "it compiles").
 
 - Software language/stack for everything *other* than the KegSensor
-  interfacing daemon (Python is the natural fit for the Pi's OLED/web
+  interfacing daemon (Python is the natural fit for the Pi's web
   library support, but not yet committed to) — the daemon just needs to
   read a file, so it can be written in anything.
-- Which Pi model specifically (4 / 5 / Zero 2 W) — affects the GPIO
-  library choice for the C daemon (see above).
 - Whether to build a small interface PCB (breaking out the hub's RJ45
   connection and the KegDisplay chain's UART-ish GPIO pins to the Pi's
   header) or wire it directly on a protoboard/HAT — these are native Pi
   GPIO peripherals, no special adapter needed, unlike the original
   RS-485 design's USB-RS485 requirement.
 - **KegStation's own KegDisplay-chain code**: the piece that reads the
-  daemon's readings file and streams it down the chain in tap order —
-  not yet written (see [`../kegdisplay/README.md`](../kegdisplay/README.md)
-  for the chain protocol's own still-open details).
-- **Whether KegStation needs a display of its own at all now** — the
-  4-5" touchscreen's main reason (showing per-tap detail on request) is
-  gone now that each tap has its own OLED; only the calibration-UI
-  reason is left. Options: keep the touchscreen anyway (still a nice
-  standalone calibration UI), revert to the original CLI-first `kegcal`
-  plan, or build a web-only calibration page. Not re-decided yet.
+  daemon's readings file and lights each tap's LED fill bar to match
+  its keg's remaining % — not yet written (see
+  [`../kegdisplay/README.md`](../kegdisplay/README.md) for the chain
+  protocol's own still-open details). **Must include a current/
+  brightness cap** (color choice + max brightness ceiling) keeping
+  total worst-case draw safely under the GST60A05's 6A — see Power
+  above for why this is a hard requirement, not a nice-to-have.
+- **Calibration UI's own screen flow** (keg select → tare/setfull →
+  confirm) on the now-settled Touch Display 2 — not yet designed.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
   5×DT KegSensor scheme, and the on-disk format/path for the readings
   file the C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
-  case already built) — depends on the touchscreen decision above.
+  case already built) — depends on the touchscreen decision above, and
+  now also needs a pinhole cutout reaching the factory-reset button.
+- **Factory-reset daemon logic and GPIO pin choice** — not yet written;
+  needs to debounce/time the ~5-10s hold, then clear WiFi creds +
+  `calibration.json` and restart the relevant services.
+- **LED supply sizing and injection point** — exact PSU wattage (depends
+  on final LED count once a strip is picked, and whatever brightness/
+  color policy the fill-bar code ends up using), and where in the
+  KegHub/KegDisplay wiring the injected 5V actually connects.
