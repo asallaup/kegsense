@@ -106,6 +106,28 @@ J5.A-; J6↔J7 pass GND/DT/SCK/VCC straight through to the hub cable.
   ordering the board, since real-world RJ11 jacks vary in body/pin
   spacing between manufacturers.
 
+## Pending design change (decided, not yet applied to the KiCad files)
+
+- **J1-J4 switching from `TerminalBlock_bornier-3_P5.08mm` to
+  `TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal`** —
+  3.5mm pitch instead of 5.08mm, to shrink the board. Checked two 3.5mm
+  candidates before picking, since pitch alone doesn't guarantee a
+  smaller footprint: WAGO 2601-1103 (3.5mm pitch, but 13×15.5mm
+  courtyard — *taller* than the current part, would make the board
+  worse in the already-tight Y direction) vs. **Phoenix
+  PT-1,5-3-3.5-H** (3.5mm pitch, 11.5×8.6mm courtyard — narrower than
+  the current 15.6×8mm, same horizontal thin-profile mounting style).
+  Phoenix is the one to use.
+  - **Not yet applied** — `generate_schematic.py` (footprint string +
+    `PIN_DX` pin spacing, currently tuned for 5.08mm) and
+    `generate_pcb.py` (J1-J4 placement/routing, extensively DRC-iterated
+    around the current footprint's exact pad positions — see Routing
+    below) both need rework, not just a footprint-string swap.
+  - **Deliberately deferred to Phase 6** of `IMPLEMENTATION_PLAN.md` —
+    the first prototype is being hand-wired on perfboard, not the
+    custom PCB, so this change isn't blocking anything yet. Apply it
+    once Phase 5 passes and the real PCB actually gets ordered.
+
 ## Physical layout
 
 Sensor terminals (J1–J4) sit in a horizontal row close to the board's top
