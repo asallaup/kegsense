@@ -19,18 +19,28 @@ for the equivalent docs that preceded the KegSensor module).
 
 ## Decisions so far
 
-- **Platform: Raspberry Pi 4 (4GB), settled — not Pi 5 or Zero 2 W.**
-  Has built-in Wi-Fi + Bluetooth like the other candidates, so no
-  wireless add-on hardware is needed either way. Picked over Pi 5 for
-  two concrete reasons, not price (the two are close, ~$55 vs ~$80):
-  power budget (Pi 5 draws roughly double Pi 4's idle power, ~4.8W vs
-  ~2.4W, and wants a 27W supply vs Pi 4's 15W — directly inflates the
-  shared-PSU sizing above for headroom this project's workload doesn't
-  need) and GPIO library maturity (`pigpio`, the traditional
-  battle-tested choice for the HX711's precise bit-banged timing, does
-  not support Pi 5's RP1 GPIO chip at all — Pi 4 keeps it available).
-  Picked over Zero 2 W because the Touch Display 2 needs a DSI
-  connector, which the Zero series doesn't have.
+- **Platform: Raspberry Pi Zero 2 W, settled — not Pi 4, Pi 5, or a
+  larger board.** Originally Pi 4, picked over Zero 2 W solely because
+  the (now-dropped, see Touchscreen/display below) Touch Display 2
+  needed a DSI connector the Zero series doesn't have — once the display
+  requirement changed to a button-driven I2C OLED, that blocker went
+  away and Zero 2 W became the smallest/cheapest board that still meets
+  every other requirement. Still ruled out vs. Pi 5 for the same reasons
+  as before: power budget (Pi 5 draws roughly double idle power and
+  wants a 27W supply, inflating the shared-PSU sizing above for headroom
+  this project's workload doesn't need) and GPIO library maturity
+  (`pigpio`, the battle-tested choice for the HX711's precise bit-banged
+  timing, does not support Pi 5's RP1 GPIO chip at all). Zero 2 W's
+  SoC (RP3A0) uses the same classic GPIO peripheral family as Pi 3/4,
+  not Pi 5's RP1, so `pigpio` and the whole KegSensor-interfacing scheme
+  below carry over unchanged. Has built-in Wi-Fi (2.4GHz only, unlike Pi
+  4's dual-band — irrelevant here, Comitup's captive portal works fine
+  over 2.4GHz) + Bluetooth 4.2/BLE (also unused by KegStation itself),
+  so still no wireless add-on hardware needed. Fixed at 512MB RAM (no
+  variants) — expected to be plenty given the now-lighter workload (no
+  browser/desktop GUI, just the C daemon, the button/OLED interface, and
+  a modest web dashboard), though with less margin than the Pi 4 RAM
+  options would have had.
 - **Connectivity**: reads the 5× KegSensor modules over the wired hub
   connection (shared SCK + 5× DT + power, see
   `hardware/kegsensor/wiring.md` and `hardware/keghub/README.md`) —
@@ -85,13 +95,14 @@ for the equivalent docs that preceded the KegSensor module).
 - **Tare/weight calibration: must work fully standalone at the unit
   itself — no web browser and no external device (phone/laptop/SSH)
   required.** This is a hard requirement, not a convenience preference,
-  so the on-unit touchscreen (below) is the primary calibration
-  interface. A `kegcal` CLI program still exists underneath as the
-  actual implementation (and an SSH-accessible fallback for
-  development/debugging) — the touchscreen UI shells out to the same
+  so the on-unit button + OLED interface (below) is the primary
+  calibration interface. A `kegcal` CLI program still exists underneath
+  as the actual implementation (and an SSH-accessible fallback for
+  development/debugging) — the button/OLED UI shells out to the same
   commands rather than duplicating calibration logic, same relationship
   originally planned between `kegcal` and a future dashboard, just with
-  the touchscreen as the primary caller instead of the web dashboard.
+  the button/OLED interface as the primary caller instead of the web
+  dashboard.
   - `kegcal tare <keg>` — reads that keg's *current* raw ADC value (from
     the daemon's readings file) and stores it as the tare reference.
   - `kegcal setfull <keg> <grams>` — same, but stores it as the "full"
@@ -265,36 +276,33 @@ for the equivalent docs that preceded the KegSensor module).
     touchscreen menu item — has to work even if the touchscreen UI or
     software is hung/misconfigured, which is exactly the case a factory
     reset needs to recover from.
-- **Touchscreen model: official Raspberry Pi Touch Display 2, 5" (SC1975),
-  ~$40.** 91.5×143.5×16mm, 720×1280 IPS, 62.1×110.4mm active area,
-  capacitive 5-point touch, portrait by default. Powered directly off
-  GPIO 5V (folds into the shared-PSU sizing above) with only a DSI
-  ribbon needed for video+touch — no HDMI/USB cable, no separate driver
-  install, Raspberry Pi OS supports it out of the box. Confirmed
-  incompatible with the Pi Zero series (fine, already ruled out — see
-  Platform above), compatible with Pi 1B+ onward including 4 and 5.
-  Chosen over cheaper (~$9) generic HDMI+USB-touch panels from
-  AliExpress: those only claim Pi 2/3 B+ compatibility (Pi 4/5 support
-  unverified), use a bulkier HDMI+USB+GPIO wiring path instead of one
-  ribbon, are typically resistive not capacitive touch, and carry
-  real driver-reliability risk from unmaintained overlays — not worth
-  the ~$30 savings against this project's "verify before committing"
-  standard.
-  - **EU sourcing option confirmed**: RaspberryPi.dk (Danish reseller),
-    SKU 9696, €53.39 incl. VAT — lists RPi 4/RPi 5 compatibility
-    directly, matches spec.
-- **KegStation's own display: a 4-5" touchscreen, settled (again).** The
-  original reason (also showing per-tap detail on request) is gone now
-  that per-tap indication is just a plain LED fill bar with no text —
-  but the standalone-calibration requirement above is reason enough on
-  its own: calibration has to work with nothing but the unit itself, so
-  *some* local screen+input is required, and a touchscreen is simplest
-  (single component, no separate buttons/encoder to wire up). Supersedes
-  the web-only/CLI-only alternatives considered — both were ruled out
-  specifically because they depend on an external device. (If
-  [`../kegtag/`](../kegtag/) ends up built, it adds brew-name/level
-  detail back at the tap, but as an independent wireless add-on with its
-  own hub — unrelated to why the touchscreen exists.)
+- **Display + input: superseded — a 2.42" I2C OLED (SSD1306/SSD1309,
+  128×64) plus physical navigation buttons, not a touchscreen.** Chosen
+  over the official Raspberry Pi Touch Display 2 (5", SC1975, ~$40/€53)
+  purely to cut cost: the touchscreen was the single largest line item
+  in KegStation's BOM, and dropping it also unblocked the Platform
+  change to Zero 2 W above (the Touch Display 2's DSI requirement was
+  the only thing ruling Zero 2 W out). Buttons still satisfy the
+  standalone-calibration hard requirement below just as well as a
+  touchscreen — the touchscreen was originally picked for being the
+  *simplest* single-component option ("no separate buttons/encoder to
+  wire up"), not because buttons don't work; this trades a little
+  extra wiring for a real cost cut.
+  - **OLED interface: I2C, not SPI** — deliberately, to keep GPIO usage
+    minimal (2 signal pins, SDA/SCL) alongside the navigation buttons,
+    the PIR sensor, and the factory-reset button, all sharing the same
+    40-pin header. Some 2.42" SSD1309 modules default to SPI wiring
+    with a jumper-selectable I2C mode; simplest to buy a listing with an
+    explicit I2C color/variant option rather than rely on jumpers.
+  - **Driver note**: at least one buyer of a common 2.42" SSD1309-branded
+    module reported the SSD1309 driver not producing an image, but the
+    SSD1306 driver working fine on the same hardware — worth trying
+    SSD1306 first in software if SSD1309 doesn't immediately work.
+  - **Navigation buttons**: not yet sourced or wired — needed for the
+    keg-select/tare/setfull/confirm flow now that there's no touch
+    input. GPIO pin assignment not yet decided (see Still Open).
+  - Still satisfies "no per-tap detail/MCU" below — this is KegStation's
+    own on-unit display, unrelated to the per-tap LED fill bars.
 
 ## Still open
 
@@ -328,13 +336,15 @@ for the equivalent docs that preceded the KegSensor module).
   above) that dims the chain when the room's been empty past the
   timeout.
 - **Calibration UI's own screen flow** (keg select → tare/setfull →
-  confirm) on the now-settled Touch Display 2 — not yet designed.
+  confirm) on the now-settled button + OLED interface — not yet
+  designed, and GPIO pin assignment for the buttons isn't decided
+  either.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
   5×DT KegSensor scheme, and the on-disk format/path for the readings
   file the C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
-  case already built) — depends on the touchscreen decision above, and
-  now also needs a pinhole cutout reaching the factory-reset button.
+  case already built) — depends on the display/button decision above,
+  and now also needs a pinhole cutout reaching the factory-reset button.
 - **Factory-reset daemon logic and GPIO pin choice** — not yet written;
   needs to debounce/time the ~5-10s hold, then clear WiFi creds +
   `calibration.json` and restart the relevant services.
