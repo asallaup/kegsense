@@ -273,31 +273,45 @@ for the equivalent docs that preceded the KegSensor module).
     wired to a GPIO the daemon watches. Held ~5-10s: clears WiFi
     credentials (falls back to Comitup's setup portal) and wipes
     `calibration.json`. Deliberately a physical button, not a
-    touchscreen menu item — has to work even if the touchscreen UI or
+    software menu item — has to work even if the display UI or
     software is hung/misconfigured, which is exactly the case a factory
     reset needs to recover from.
-- **Display + input: superseded — a 2.42" I2C OLED (SSD1306/SSD1309,
-  128×64) plus physical navigation buttons, not a touchscreen.** Chosen
-  over the official Raspberry Pi Touch Display 2 (5", SC1975, ~$40/€53)
-  purely to cut cost: the touchscreen was the single largest line item
-  in KegStation's BOM, and dropping it also unblocked the Platform
+- **Display + input: a 4.0" color IPS TFT (ILI9488, 480×320, "No Touch"
+  variant) plus physical navigation buttons, not a touchscreen.**
+  Superseded an intermediate plan (2.42" monochrome I2C OLED, see git
+  history) — chosen over that OLED specifically for future headroom:
+  a 480×320 color panel leaves real room to grow the on-unit UI later
+  (WiFi signal bars, brew name, per-keg level graphs, multiple fields
+  at once) without another hardware swap, which the OLED's 128×64
+  monochrome canvas couldn't accommodate gracefully. Both options were
+  chosen over the official Raspberry Pi Touch Display 2 (5", SC1975,
+  ~$40/€53) to cut cost — that touchscreen was the single largest line
+  item in KegStation's BOM, and dropping it also unblocked the Platform
   change to Zero 2 W above (the Touch Display 2's DSI requirement was
   the only thing ruling Zero 2 W out). Buttons still satisfy the
   standalone-calibration hard requirement below just as well as a
   touchscreen — the touchscreen was originally picked for being the
   *simplest* single-component option ("no separate buttons/encoder to
-  wire up"), not because buttons don't work; this trades a little
-  extra wiring for a real cost cut.
-  - **OLED interface: I2C, not SPI** — deliberately, to keep GPIO usage
-    minimal (2 signal pins, SDA/SCL) alongside the navigation buttons,
-    the PIR sensor, and the factory-reset button, all sharing the same
-    40-pin header. Some 2.42" SSD1309 modules default to SPI wiring
-    with a jumper-selectable I2C mode; simplest to buy a listing with an
-    explicit I2C color/variant option rather than rely on jumpers.
-  - **Driver note**: at least one buyer of a common 2.42" SSD1309-branded
-    module reported the SSD1309 driver not producing an image, but the
-    SSD1306 driver working fine on the same hardware — worth trying
-    SSD1306 first in software if SSD1309 doesn't immediately work.
+  wire up"), not because buttons don't work.
+  - **"No Touch" variant, deliberately** — a touch variant exists on the
+    same listing, but adding touch back would partly undo the reason
+    the Touch Display 2 was dropped, and the design already commits to
+    buttons for input.
+  - **Interface: SPI** (~8 pins without touch: VCC, GND, CS, RESET, DC,
+    SDI/MOSI, SCK, LED backlight) — more GPIO than the OLED option's 2
+    pins (SDA/SCL) would have used, but Zero 2 W's 40-pin header still
+    has plenty of room alongside the navigation buttons, PIR sensor, and
+    factory-reset button.
+  - **UI approach: a lightweight embedded graphics library** (e.g.
+    LVGL-style), not a browser/desktop stack — keeps the richer color UI
+    well within Zero 2 W's 512MB RAM, same conclusion as the OLED plan
+    reached, just confirmed explicitly for the bigger screen too.
+  - **Driver note**: at least one buyer of this exact listing received
+    an ILI9484-branded chip instead of the advertised ILI9488 ("tho
+    functionally perfect") — worth being ready to try adjacent
+    ILI948x drivers in software if the advertised one doesn't
+    immediately work, same generic-module caveat as the OLED's
+    SSD1306-vs-SSD1309 mismatch.
   - **Navigation buttons**: not yet sourced or wired — needed for the
     keg-select/tare/setfull/confirm flow now that there's no touch
     input. GPIO pin assignment not yet decided (see Still Open).
@@ -336,7 +350,7 @@ for the equivalent docs that preceded the KegSensor module).
   above) that dims the chain when the room's been empty past the
   timeout.
 - **Calibration UI's own screen flow** (keg select → tare/setfull →
-  confirm) on the now-settled button + OLED interface — not yet
+  confirm) on the now-settled button + color TFT interface — not yet
   designed, and GPIO pin assignment for the buttons isn't decided
   either.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
