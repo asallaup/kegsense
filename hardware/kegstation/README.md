@@ -111,6 +111,18 @@ for the equivalent docs that preceded the KegSensor module).
     the "how much is left" baseline) or a separate known calibration
     mass — the tool works the same either way, this only affects what
     number you type in.
+  - **On-unit UI note**: the button/nav-switch interface offers Set Full
+    as a **preset selection** (e.g. 5/10/15/20kg), not free numeric
+    entry — implementing the "actual full keg's spec weight" option
+    above via list-selection rather than typing a number, consistent
+    with every other step in the flow being a scroll-and-select action
+    (see Display + input above). The presets must be the *real* spec
+    weight (liquid + keg tare) of whatever keg sizes are actually in
+    use, not round numbers — an inaccurate preset introduces a
+    systematic error across every future reading for that keg, since
+    it directly anchors the calibration math. `kegcal setfull` itself
+    is unaffected — it still just takes a gram value; only the on-unit
+    UI constrains which values are offered.
   - Calibration values live in a separate config file (e.g.
     `calibration.json`), which the daemon just re-reads on its normal
     cycle — no signaling/IPC needed for `kegcal` to take effect.
@@ -312,9 +324,20 @@ for the equivalent docs that preceded the KegSensor module).
     ILI948x drivers in software if the advertised one doesn't
     immediately work, same generic-module caveat as the OLED's
     SSD1306-vs-SSD1309 mismatch.
-  - **Navigation buttons**: not yet sourced or wired — needed for the
-    keg-select/tare/setfull/confirm flow now that there's no touch
-    input. GPIO pin assignment not yet decided (see Still Open).
+  - **Input: a 5-way tactile navigation switch (up/down/left/right +
+    center select), settled — not discrete buttons, not a rotary
+    encoder.** 5 GPIO pins, each a simple digital read (no quadrature
+    decoding). Chosen over a rotary encoder specifically because the
+    on-unit UI is planned to grow into a genuinely 2D layout later
+    (multiple screens/tabs navigated left/right, e.g. WiFi signal,
+    brew info — see Display note above) — a rotary encoder only gives
+    one rotational axis, which fits a purely linear list-menu well but
+    not a 2D one. Traded away the encoder's main advantage (fast,
+    precise numeric entry) deliberately, since the one place that
+    mattered — Set Full's weight value — moved to preset selection
+    instead (see Tare/weight calibration below), removing the need for
+    free numeric entry entirely. Not yet wired — GPIO pin assignment
+    not yet decided (see Still Open).
   - Still satisfies "no per-tap detail/MCU" below — this is KegStation's
     own on-unit display, unrelated to the per-tap LED fill bars.
 
