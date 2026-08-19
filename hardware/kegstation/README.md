@@ -92,6 +92,23 @@ for the equivalent docs that preceded the KegSensor module).
     choice for the HX711's precise bit-banged clock timing — viable now
     that Pi 4 is settled (below), unlike on Pi 5 where it doesn't
     support the RP1 GPIO chip at all.
+  - **Disconnected-cable detection: a per-keg DT timeout watchdog,
+    settled.** The RJ14 wiring has no spare conductor for a dedicated
+    presence-detect signal (all 4 — GND/VCC/SCK/DT — are already used),
+    so detection is inferred from HX711 protocol behavior instead: each
+    keg's DT line should pulse low on every new conversion (~100ms or
+    ~12.5ms depending on the HX711's rate setting). If a keg's DT line
+    produces no valid ready-pulse within 2-3× that interval, the daemon
+    marks that keg as **not responding** rather than reporting a stale
+    or garbage weight. The DT input needs an internal or external
+    pull-up so "disconnected" reads as a consistent, predictable HIGH
+    instead of noisy floating, making the timeout check reliable
+    instead of racy. Surfaced as a distinct per-keg status in the
+    readings file (not folded into the weight/percentage fields) — see
+    Display + input below for how it's shown on-unit, and note
+    KegDisplay's per-tap fill bar shouldn't just show 0% for this case
+    either, since that reads as "keg is empty" rather than "sensor
+    isn't talking" (still open, see KegDisplay's own README).
 - **Tare/weight calibration: must work fully standalone at the unit
   itself — no web browser and no external device (phone/laptop/SSH)
   required.** This is a hard requirement, not a convenience preference,
@@ -361,6 +378,14 @@ for the equivalent docs that preceded the KegSensor module).
     not yet decided (see Still Open).
   - Still satisfies "no per-tap detail/MCU" below — this is KegStation's
     own on-unit display, unrelated to the per-tap LED fill bars.
+  - **Sensor-connection status: red/green per-keg indicator, settled.**
+    Reflects the DT timeout watchdog above directly — green means that
+    keg's HX711 is responding normally, red means it's not (cable
+    unplugged, unpowered module, or a dead sensor — the daemon can't
+    distinguish which, just that the keg isn't reporting). Shown
+    per-keg on the main screen alongside each keg's fill level, so a
+    disconnected sensor is obvious at a glance rather than silently
+    reading as an empty keg.
 
 ## Still open
 
