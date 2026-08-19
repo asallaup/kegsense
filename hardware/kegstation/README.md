@@ -123,6 +123,27 @@ for the equivalent docs that preceded the KegSensor module).
     it directly anchors the calibration math. `kegcal setfull` itself
     is unaffected — it still just takes a gram value; only the on-unit
     UI constrains which values are offered.
+  - **On-unit calibration wizard, designed**: tare and setfull are one
+    continuous guided flow, not two separate manual actions, with a
+    confirmation prompt gating each raw-ADC read so a mistimed press
+    can't bake in a bad calibration point:
+    1. Select **Tare** from the keg's menu (nav switch)
+    2. Prompt: "Place empty keg on scale, then confirm" — user places
+       it, presses select
+    3. System reads the current raw ADC → internally calls
+       `kegcal tare <keg>`, stores it as the 0% reference
+    4. Prompt: select a known full weight (the preset list above)
+    5. Prompt: "Place [selected weight] on scale, then confirm" — user
+       places the full keg (or a calibration mass matching that
+       weight), presses select
+    6. System reads the current raw ADC → internally calls
+       `kegcal setfull <keg> <grams>` with the chosen preset value
+    7. Both calibration points now stored — the daemon can compute
+       that keg's tare↔full linear scale from here on
+    - **A Back/cancel option at every confirmation prompt** — lets the
+      user back out if the keg isn't actually placed right or the
+      wrong preset got selected, rather than being forced through to a
+      bad read.
   - Calibration values live in a separate config file (e.g.
     `calibration.json`), which the daemon just re-reads on its normal
     cycle — no signaling/IPC needed for `kegcal` to take effect.
@@ -372,10 +393,10 @@ for the equivalent docs that preceded the KegSensor module).
   also include the PIR-driven occupancy timer** (see PIR motion sensor
   above) that dims the chain when the room's been empty past the
   timeout.
-- **Calibration UI's own screen flow** (keg select → tare/setfull →
-  confirm) on the now-settled button + color TFT interface — not yet
-  designed, and GPIO pin assignment for the buttons isn't decided
-  either.
+- **Calibration UI's own screen flow — now designed**, see the on-unit
+  calibration wizard under Tare/weight calibration above. Not yet
+  implemented in code, and GPIO pin assignment for the 5-way nav
+  switch isn't decided either.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
   5×DT KegSensor scheme, and the on-disk format/path for the readings
   file the C daemon writes.
