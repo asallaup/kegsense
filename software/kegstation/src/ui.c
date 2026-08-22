@@ -80,7 +80,9 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
     lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, -8);
     lv_bar_set_range(bar, 0, 100);
     lv_obj_set_style_bg_color(bar, lv_color_hex(0x6E7480), 0);       /* empty track */
+    lv_obj_set_style_radius(bar, 0, 0);                              /* rectangle, not the default pill shape */
     lv_obj_set_style_bg_color(bar, lv_color_hex(0xE8A33C), LV_PART_INDICATOR); /* beer-amber fill */
+    lv_obj_set_style_radius(bar, 0, LV_PART_INDICATOR);
     lv_bar_set_value(bar, keg_fill_level(keg_num), LV_ANIM_OFF);
 
     /* Red/green sensor-connection status dot, top-right of the body. */
