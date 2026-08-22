@@ -35,12 +35,48 @@ static bool keg_sensor_connected(int keg_num)
 
 /* Placeholder fill level (0-100%). Real data comes from the daemon's
  * readings file (raw ADC -> kegcal's tare/setfull linear scale) once
- * that exists -- these are just varied fake values so the row of kegs
- * looks reasonable to demo against. */
+ * that exists -- these are varied fake values so the row of kegs
+ * demonstrates all four level-color states (green/yellow/red/blinking
+ * red) at once. */
 static int keg_fill_level(int keg_num)
 {
-    static const int fake_levels[NUM_KEGS] = {80, 45, 60, 15, 95};
+    static const int fake_levels[NUM_KEGS] = {80, 45, 12, 3, 95};
     return fake_levels[(keg_num - 1) % NUM_KEGS]; /* TODO: read from readings file */
+}
+
+/* Level color thresholds: >=50% green, >=20% yellow, >=5% red,
+ * <5% still red but blinking (see keg_level_is_critical below). */
+static lv_color_t keg_level_color(int level)
+{
+    if (level >= 50) return lv_color_hex(0x2ecc71); /* green */
+    if (level >= 20) return lv_color_hex(0xF1C40F); /* yellow */
+    return lv_color_hex(0xE74C3C);                  /* red (also used blinking, below) */
+}
+
+static bool keg_level_is_critical(int level)
+{
+    return level < 5;
+}
+
+/* Blinks the bar's indicator opacity, for a critically low keg. */
+static void indicator_opa_anim_cb(void * var, int32_t v)
+{
+    lv_obj_set_style_bg_opa((lv_obj_t *)var, (lv_opa_t)v, LV_PART_INDICATOR);
+}
+
+static void start_critical_blink(lv_obj_t * bar)
+{
+    /* lv_anim_start() copies this by value, so a plain stack local is
+     * fine even though it goes out of scope right after the call. */
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, bar);
+    lv_anim_set_exec_cb(&a, indicator_opa_anim_cb);
+    lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_duration(&a, 400);
+    lv_anim_set_reverse_duration(&a, 400);
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&a);
 }
 
 /* Builds one Cornelius-keg icon: a rounded stainless-steel-colored body
@@ -74,16 +110,21 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
         lv_obj_align(post, LV_ALIGN_TOP_MID, (p == 0) ? -12 : 12, 4);
     }
 
-    /* Fill-level bar, inset into the body, filling bottom-up. */
+    /* Fill-level bar, inset into the body, filling bottom-up, colored
+     * green/yellow/red by level -- blinking red if critically low. */
+    int level = keg_fill_level(keg_num);
     lv_obj_t * bar = lv_bar_create(keg);
     lv_obj_set_size(bar, BAR_W, BAR_H); /* taller than wide -> vertical, per lv_bar's own hor=(w>=h) check */
     lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, -8);
     lv_bar_set_range(bar, 0, 100);
     lv_obj_set_style_bg_color(bar, lv_color_hex(0x6E7480), 0);       /* empty track */
     lv_obj_set_style_radius(bar, 0, 0);                              /* rectangle, not the default pill shape */
-    lv_obj_set_style_bg_color(bar, lv_color_hex(0xE8A33C), LV_PART_INDICATOR); /* beer-amber fill */
+    lv_obj_set_style_bg_color(bar, keg_level_color(level), LV_PART_INDICATOR);
     lv_obj_set_style_radius(bar, 0, LV_PART_INDICATOR);
-    lv_bar_set_value(bar, keg_fill_level(keg_num), LV_ANIM_OFF);
+    lv_bar_set_value(bar, level, LV_ANIM_OFF);
+    if (keg_level_is_critical(level)) {
+        start_critical_blink(bar);
+    }
 
     /* Red/green sensor-connection status dot, top-right of the body. */
     lv_obj_t * status_dot = lv_obj_create(keg);

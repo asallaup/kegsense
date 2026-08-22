@@ -11,16 +11,19 @@ production UI code, identical either way.
 
 **Status**: navigation skeleton only. Opens a keg-select screen showing
 5 Cornelius-keg icons in a row (rounded steel-gray body, two posts on
-top, a vertical amber `lv_bar` inset into the body for fill level, and
-the settled red/green sensor-connection dot) that drills into a per-keg
-"Tare / Set Full / Back" screen. Fill levels and sensor status are both
-faked (`keg_fill_level()` / `keg_sensor_connected()` in `ui.c`) — real
-data comes from the C daemon's readings file once that exists. The
-Tare/Set Full buttons just update a status label for now — the real
-guided calibration wizard (place empty keg → confirm → select preset
-weight → confirm, see the hardware README's "On-unit calibration
-wizard") isn't wired up yet, this only demonstrates the screen-navigation
-structure it will sit on top of.
+top, a vertical rectangular `lv_bar` inset into the body for fill level,
+and the settled red/green sensor-connection dot) that drills into a
+per-keg "Tare / Set Full / Back" screen. The fill bar is colored by
+level — green ≥50%, yellow ≥20%, red ≥5%, and **blinking red** below
+5% (an infinite-repeat opacity animation on the bar's indicator part).
+Fill levels and sensor status are both faked (`keg_fill_level()` /
+`keg_sensor_connected()` in `ui.c`, deliberately varied to demo all four
+color states at once) — real data comes from the C daemon's readings
+file once that exists. The Tare/Set Full buttons just update a status
+label for now — the real guided calibration wizard (place empty keg →
+confirm → select preset weight → confirm, see the hardware README's
+"On-unit calibration wizard") isn't wired up yet, this only demonstrates
+the screen-navigation structure it will sit on top of.
 
 ## Build (macOS)
 
