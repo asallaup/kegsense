@@ -5,6 +5,14 @@
 
 #define NUM_KEGS 5
 
+/* Cornelius keg icon geometry, in pixels. */
+#define KEG_W        60
+#define KEG_H        140
+#define KEG_SPACING  92   /* distance between keg centers */
+#define POST_D       12   /* gas-in/liquid-out post diameter */
+#define BAR_W        (KEG_W - 18)
+#define BAR_H        (KEG_H - 46)  /* leaves headspace for the posts/dome */
+
 static lv_group_t * group;
 static lv_obj_t * scr_keg_select;
 static lv_obj_t * scr_keg_detail;
@@ -13,6 +21,7 @@ static lv_obj_t * detail_status_label;
 
 static void build_keg_select_screen(void);
 static void build_keg_detail_screen(int keg_num);
+static void keg_button_event_cb(lv_event_t * e);
 
 /* Placeholder for the per-keg sensor-connected status (red/green
  * indicator, see kegstation/README.md "Sensor-connection status").
@@ -22,6 +31,79 @@ static bool keg_sensor_connected(int keg_num)
 {
     (void)keg_num;
     return true; /* TODO: read from the daemon's readings file */
+}
+
+/* Placeholder fill level (0-100%). Real data comes from the daemon's
+ * readings file (raw ADC -> kegcal's tare/setfull linear scale) once
+ * that exists -- these are just varied fake values so the row of kegs
+ * looks reasonable to demo against. */
+static int keg_fill_level(int keg_num)
+{
+    static const int fake_levels[NUM_KEGS] = {80, 45, 60, 15, 95};
+    return fake_levels[(keg_num - 1) % NUM_KEGS]; /* TODO: read from readings file */
+}
+
+/* Builds one Cornelius-keg icon: a rounded stainless-steel-colored body
+ * with two posts on top (gas-in/liquid-out, the recognizable Cornelius
+ * silhouette), a vertical lv_bar inset into the body showing fill level,
+ * a red/green sensor-status dot, and a "Keg N" label underneath. Returns
+ * the outer container -- the clickable/focusable object added to the
+ * nav group. */
+static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
+{
+    lv_obj_t * keg = lv_obj_create(parent);
+    lv_obj_remove_style_all(keg);
+    lv_obj_add_flag(keg, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(keg, KEG_W, KEG_H);
+    lv_obj_align(keg, LV_ALIGN_TOP_MID, x_ofs, 40);
+
+    /* Keg body: rounded rect, brushed-steel gray. */
+    lv_obj_set_style_radius(keg, 14, 0);
+    lv_obj_set_style_bg_color(keg, lv_color_hex(0xB9BEC4), 0);
+    lv_obj_set_style_bg_opa(keg, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(keg, lv_color_hex(0x4A4E54), 0);
+    lv_obj_set_style_border_width(keg, 2, 0);
+
+    /* Gas-in / liquid-out posts on top -- the detail that reads as
+     * "Cornelius keg" rather than just "cylinder". */
+    for (int p = 0; p < 2; p++) {
+        lv_obj_t * post = lv_obj_create(keg);
+        lv_obj_set_size(post, POST_D, POST_D);
+        lv_obj_set_style_radius(post, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_color(post, lv_color_hex(0x2E3136), 0);
+        lv_obj_align(post, LV_ALIGN_TOP_MID, (p == 0) ? -12 : 12, 4);
+    }
+
+    /* Fill-level bar, inset into the body, filling bottom-up. */
+    lv_obj_t * bar = lv_bar_create(keg);
+    lv_obj_set_size(bar, BAR_W, BAR_H); /* taller than wide -> vertical, per lv_bar's own hor=(w>=h) check */
+    lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_bar_set_range(bar, 0, 100);
+    lv_obj_set_style_bg_color(bar, lv_color_hex(0x6E7480), 0);       /* empty track */
+    lv_obj_set_style_bg_color(bar, lv_color_hex(0xE8A33C), LV_PART_INDICATOR); /* beer-amber fill */
+    lv_bar_set_value(bar, keg_fill_level(keg_num), LV_ANIM_OFF);
+
+    /* Red/green sensor-connection status dot, top-right of the body. */
+    lv_obj_t * status_dot = lv_obj_create(keg);
+    lv_obj_set_size(status_dot, 10, 10);
+    lv_obj_set_style_radius(status_dot, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(status_dot,
+        keg_sensor_connected(keg_num) ? lv_color_hex(0x2ecc71)
+                                       : lv_color_hex(0xe74c3c),
+        0);
+    lv_obj_align(status_dot, LV_ALIGN_TOP_RIGHT, -2, 2);
+
+    /* "Keg N" label underneath. */
+    lv_obj_t * label = lv_label_create(parent);
+    char buf[16];
+    snprintf(buf, sizeof(buf), "Keg %d", keg_num);
+    lv_label_set_text(label, buf);
+    lv_obj_align(label, LV_ALIGN_TOP_MID, x_ofs, 40 + KEG_H + 6);
+
+    lv_obj_add_event_cb(keg, keg_button_event_cb, LV_EVENT_CLICKED,
+                         (void *)(intptr_t)keg_num);
+
+    return keg;
 }
 
 static void back_to_keg_select(lv_event_t * e)
@@ -69,35 +151,16 @@ static void build_keg_select_screen(void)
     lv_label_set_text(title, "KegStation");
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
 
-    lv_obj_t * list = lv_list_create(scr_keg_select);
-    lv_obj_set_size(list, 220, 260);
-    lv_obj_align(list, LV_ALIGN_CENTER, 0, 10);
-
-    lv_list_add_text(list, "Select a keg");
-
+    /* Row of 5 Cornelius-keg icons, centered, each with its fill level
+     * as a vertical bar inside the body. */
     for (int i = 0; i < NUM_KEGS; i++) {
         int keg_num = i + 1;
-        char buf[16];
-        snprintf(buf, sizeof(buf), "Keg %d", keg_num);
+        int x_ofs = (i - (NUM_KEGS - 1) / 2) * KEG_SPACING
+                    - ((NUM_KEGS % 2 == 0) ? KEG_SPACING / 2 : 0);
 
-        lv_obj_t * btn = lv_list_add_button(list, NULL, buf);
-        lv_obj_add_event_cb(btn, keg_button_event_cb, LV_EVENT_CLICKED,
-                             (void *)(intptr_t)keg_num);
-
-        /* Red/green sensor-connection indicator, per the settled design
-         * in kegstation/README.md -- currently faked via
-         * keg_sensor_connected(), not the real daemon readings file. */
-        lv_obj_t * status_dot = lv_obj_create(btn);
-        lv_obj_set_size(status_dot, 14, 14);
-        lv_obj_set_style_radius(status_dot, LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(status_dot,
-            keg_sensor_connected(keg_num) ? lv_color_hex(0x2ecc71)
-                                           : lv_color_hex(0xe74c3c),
-            0);
-        lv_obj_align(status_dot, LV_ALIGN_RIGHT_MID, -10, 0);
-
-        keg_buttons[i] = btn;
-        lv_group_add_obj(group, btn);
+        lv_obj_t * keg = build_keg_icon(scr_keg_select, keg_num, x_ofs);
+        keg_buttons[i] = keg;
+        lv_group_add_obj(group, keg);
     }
 }
 

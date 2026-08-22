@@ -9,14 +9,18 @@ demoed well before the real hardware arrives. Only the display/input
 *driver* differs between simulator and hardware — `src/ui.c` is the actual
 production UI code, identical either way.
 
-**Status**: navigation skeleton only. Opens a keg-select screen (5 kegs,
-with the settled red/green sensor-connection indicator per keg) that
-drills into a per-keg "Tare / Set Full / Back" screen. The Tare/Set Full
-buttons just update a status label for now — the real guided calibration
-wizard (place empty keg → confirm → select preset weight → confirm, see
-the hardware README's "On-unit calibration wizard") isn't wired up yet,
-this only demonstrates the screen-navigation structure it will sit on top
-of.
+**Status**: navigation skeleton only. Opens a keg-select screen showing
+5 Cornelius-keg icons in a row (rounded steel-gray body, two posts on
+top, a vertical amber `lv_bar` inset into the body for fill level, and
+the settled red/green sensor-connection dot) that drills into a per-keg
+"Tare / Set Full / Back" screen. Fill levels and sensor status are both
+faked (`keg_fill_level()` / `keg_sensor_connected()` in `ui.c`) — real
+data comes from the C daemon's readings file once that exists. The
+Tare/Set Full buttons just update a status label for now — the real
+guided calibration wizard (place empty keg → confirm → select preset
+weight → confirm, see the hardware README's "On-unit calibration
+wizard") isn't wired up yet, this only demonstrates the screen-navigation
+structure it will sit on top of.
 
 ## Build (macOS)
 
@@ -72,9 +76,11 @@ Opens a 480×320 window (matching the real panel's resolution). Controls:
 
 ## Known rough edges
 
-- Uses `lv_list_*` widgets, which this LVGL snapshot marks deprecated in
-  favor of building lists from flex columns (`lv_example_flex_list`) —
-  still compiles and works, just noisy `-Wdeprecated-declarations`
-  warnings. Worth migrating if this grows into the real implementation.
+- Uses `lv_list_*` widgets (detail screen only) and `lv_obj_add_flag`,
+  both of which this LVGL snapshot marks deprecated (`lv_list` in favor
+  of building lists from flex columns; `lv_obj_add_flag` in favor of
+  per-flag setters like `lv_obj_set_clickable`) — still compiles and
+  works, just noisy `-Wdeprecated-declarations` warnings. Worth migrating
+  if this grows into the real implementation.
 - LVGL is pinned to whatever `master` commit was current when the
   submodule was added, not a tagged release.
