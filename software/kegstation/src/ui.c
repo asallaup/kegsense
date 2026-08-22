@@ -13,16 +13,31 @@
 #define SCREEN_W 480
 #define SCREEN_H 320
 
-/* Cornelius keg icon geometry, in pixels. Sized to use the 320px screen
- * height fully (was 60x140, leaving ~90px of dead space below the row;
- * now fills down to just above the bottom edge). */
-#define KEG_W        80
+/* Cornelius keg icon: a real product photo (assets/keg_photo.jpg) with
+ * the fill-level bar overlaid directly on the metallic body -- not the
+ * black cap/base. The photo is pre-processed with Python/Pillow: the
+ * stock photo's white studio background is flood-filled to the app's
+ * dark theme color (so the icon reads as sitting in the scene, not a
+ * white card), then cropped and resized to exactly KEG_W x KEG_H (same
+ * reasoning as the background photo in style_screen_background:
+ * LV_IMAGE_ALIGN_STRETCH silently truncated a 155x450 source scaled
+ * down to this size instead of showing the whole thing, so this
+ * sidesteps LVGL's scaling path entirely -- the image is drawn 1:1, no
+ * runtime scale/align needed). BODY_* mark where the metallic body
+ * sits within that KEG_W x KEG_H frame (measured off the source photo,
+ * same coordinate space since the resize is proportional) -- not the
+ * black cap/base. The body turned out already horizontally centered in
+ * the crop, so the bar only needs a vertical offset, not a horizontal
+ * one. */
+#define KEG_W        65
 #define KEG_H        190
 #define KEG_SPACING  92   /* distance between keg centers */
 #define KEG_ROW_Y    100  /* below the "Sallaup" sign in the background photo, which is now the branding */
-#define POST_D       14   /* gas-in/liquid-out post diameter */
-#define BAR_W        (KEG_W - 18)
-#define BAR_H        (KEG_H - 46)  /* leaves headspace for the posts/dome */
+#define BODY_TOP     28   /* y-offset within the icon where the metallic body starts (below the black cap) */
+#define BODY_BOTTOM  170  /* y-offset where the body ends (above the black base) */
+#define BAR_W        52
+#define BAR_H        (BODY_BOTTOM - BODY_TOP)
+#define BAR_FILL_OPA 190  /* translucent tint over the photo, not fully opaque -- reads as liquid, not paint */
 
 static lv_group_t * group;
 static lv_obj_t * scr_keg_select;
@@ -90,7 +105,7 @@ static void start_critical_blink(lv_obj_t * bar)
     lv_anim_init(&a);
     lv_anim_set_var(&a, bar);
     lv_anim_set_exec_cb(&a, indicator_opa_anim_cb);
-    lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_values(&a, BAR_FILL_OPA, LV_OPA_TRANSP);
     lv_anim_set_duration(&a, 400);
     lv_anim_set_reverse_duration(&a, 400);
     lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
@@ -115,7 +130,7 @@ static void update_keg_bar(int idx)
         keg_blinking[idx] = true;
     } else if (!critical && keg_blinking[idx]) {
         lv_anim_delete(bar, indicator_opa_anim_cb);
-        lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR); /* undo mid-fade */
+        lv_obj_set_style_bg_opa(bar, BAR_FILL_OPA, LV_PART_INDICATOR); /* undo mid-fade */
         keg_blinking[idx] = false;
     }
 }
@@ -137,12 +152,12 @@ static void level_update_timer_cb(lv_timer_t * timer)
     }
 }
 
-/* Builds one Cornelius-keg icon: a rounded stainless-steel-colored body
- * with two posts on top (gas-in/liquid-out, the recognizable Cornelius
- * silhouette), a vertical lv_bar inset into the body showing fill level,
- * a red/green sensor-status dot, and a "Keg N" label underneath. Returns
- * the outer container -- the clickable/focusable object added to the
- * nav group. */
+/* Builds one Cornelius-keg icon: the real product photo
+ * (assets/keg_photo.jpg) with a translucent vertical lv_bar overlaid
+ * directly on the metallic body (not the black cap/base) showing fill
+ * level, a red/green sensor-status dot, and a "Keg N" label underneath.
+ * Returns the outer container -- the clickable/focusable object added
+ * to the nav group. */
 static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
 {
     lv_obj_t * keg = lv_obj_create(parent);
@@ -151,33 +166,23 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
     lv_obj_set_size(keg, KEG_W, KEG_H);
     lv_obj_align(keg, LV_ALIGN_TOP_MID, x_ofs, KEG_ROW_Y);
 
-    /* Keg body: rounded rect, brushed-steel gray. */
-    lv_obj_set_style_radius(keg, 14, 0);
-    lv_obj_set_style_bg_color(keg, lv_color_hex(0xB9BEC4), 0);
-    lv_obj_set_style_bg_opa(keg, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(keg, lv_color_hex(0x4A4E54), 0);
-    lv_obj_set_style_border_width(keg, 2, 0);
+    lv_obj_t * photo = lv_image_create(keg);
+    lv_image_set_src(photo, "A:assets/keg_photo.jpg");
+    lv_obj_align(photo, LV_ALIGN_TOP_LEFT, 0, 0);
 
-    /* Gas-in / liquid-out posts on top -- the detail that reads as
-     * "Cornelius keg" rather than just "cylinder". */
-    for (int p = 0; p < 2; p++) {
-        lv_obj_t * post = lv_obj_create(keg);
-        lv_obj_set_size(post, POST_D, POST_D);
-        lv_obj_set_style_radius(post, LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(post, lv_color_hex(0x2E3136), 0);
-        lv_obj_align(post, LV_ALIGN_TOP_MID, (p == 0) ? -16 : 16, 4);
-    }
-
-    /* Fill-level bar, inset into the body, filling bottom-up, colored
-     * green/yellow/red by level -- blinking red if critically low.
-     * Initial value/color/blink state set via update_keg_bar() so the
-     * build path and the periodic timer share the exact same logic. */
+    /* Fill-level bar, translucent, overlaid on the body region measured
+     * off the photo (BODY_TOP/BODY_BOTTOM) -- not the black cap/base.
+     * Colored green/yellow/red by level, blinking red if critically
+     * low. Initial value/color/blink state set via update_keg_bar() so
+     * the build path and the periodic timer share the exact same
+     * logic. */
     lv_obj_t * bar = lv_bar_create(keg);
     lv_obj_set_size(bar, BAR_W, BAR_H); /* taller than wide -> vertical, per lv_bar's own hor=(w>=h) check */
-    lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_align(bar, LV_ALIGN_TOP_MID, 0, BODY_TOP); /* body turned out already horizontally centered in the crop */
     lv_bar_set_range(bar, 0, 100);
-    lv_obj_set_style_bg_color(bar, lv_color_hex(0x6E7480), 0);       /* empty track */
-    lv_obj_set_style_radius(bar, 0, 0);                              /* rectangle, not the default pill shape */
+    lv_obj_set_style_bg_opa(bar, LV_OPA_TRANSP, 0);      /* empty track: fully see-through, shows the bare photo */
+    lv_obj_set_style_bg_opa(bar, BAR_FILL_OPA, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar, 0, 0);                  /* rectangle, not the default pill shape */
     lv_obj_set_style_radius(bar, 0, LV_PART_INDICATOR);
 
     keg_bars[keg_num - 1] = bar;

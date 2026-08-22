@@ -15,11 +15,19 @@ pre-cropped to 480×320 with Python/Pillow so the "Sallaup" sign on the
 shed lands near the top rather than getting cut off by LVGL's own
 auto-crop, which didn't handle a portrait source well) under a dark
 scrim for legibility — that sign **is** the branding now, no separate
-text wordmark. Below it, 5 Cornelius-keg icons in a row (rounded
-steel-gray body, two posts on top, a vertical rectangular `lv_bar`
-inset into the body for fill level, and the settled red/green
-sensor-connection dot) that drill into a per-keg "Tare / Set Full /
-Back" screen (same background). The fill bar is colored by
+text wordmark. Below it, 5 keg icons in a row — each the actual product
+photo of a Cornelius keg (`assets/keg_photo.jpg`, cropped from a stock
+photo with its white studio background flood-filled to the app's dark
+theme color, then pre-resized to its exact on-screen icon size — all
+with Python/Pillow, same reasoning as the background photo, since
+LVGL's `LV_IMAGE_ALIGN_STRETCH` silently truncated the tall source
+instead of scaling the whole thing down) with a translucent vertical `lv_bar`
+overlaid directly on the metallic body for fill level (measured off the
+photo so it lands on the steel, not the black cap/base — see
+`BODY_TOP`/`BODY_BOTTOM` in `ui.c`), plus the settled red/green
+sensor-connection dot — that drill into a
+per-keg "Tare / Set Full / Back" screen (same background). The fill bar
+is colored by
 level — green ≥50%, yellow ≥20%, red ≥5%, and **blinking red** below
 5% (an infinite-repeat opacity animation on the bar's indicator part).
 Fill levels and sensor status are both faked (`keg_fill_level()` /
