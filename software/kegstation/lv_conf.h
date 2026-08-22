@@ -868,7 +868,7 @@
 #define LV_USE_BMP 0
 
 /** Also decodes split JPEG, a custom format optimized for embedded systems. */
-#define LV_USE_TJPGD 0
+#define LV_USE_TJPGD 1
 
 /** High-performance decoder supporting the complete JPEG specifications. */
 #define LV_USE_LIBJPEG_TURBO 0
@@ -1895,11 +1895,11 @@
 #define LV_FS_DEFAULT_DRIVER_LETTER 0
 
 /** stdio */
-#define LV_USE_FS_STDIO 0
+#define LV_USE_FS_STDIO 1
 
 #if LV_USE_FS_STDIO
 /** Drive letter for stdio (65 = 'A', 0 = disabled) */
-#define LV_FS_STDIO_LETTER 0
+#define LV_FS_STDIO_LETTER 65
 
 /** Working directory for stdio */
 #define LV_FS_STDIO_PATH ""

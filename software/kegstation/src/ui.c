@@ -7,6 +7,12 @@
 
 #define NUM_KEGS 5
 
+/* Matches the real ILI9488 panel's resolution (see
+ * hardware/kegstation/README.md) and the simulator's SDL window size
+ * (main.c). */
+#define SCREEN_W 480
+#define SCREEN_H 320
+
 /* Cornelius keg icon geometry, in pixels. Sized to use the 320px screen
  * height fully (was 60x140, leaving ~90px of dead space below the row;
  * now fills down to just above the bottom edge). */
@@ -240,15 +246,31 @@ static void keg_button_event_cb(lv_event_t * e)
     build_keg_detail_screen(keg_num);
 }
 
-/* Dark charcoal background with a subtle top-to-bottom gradient, shared
- * by both screens -- makes the amber/green/red fill colors read clearly
- * (same reasoning as most embedded dashboard UIs favoring dark
- * backgrounds), and complements the steel-gray keg bodies. */
+/* Background photo of the actual Sallaup rig, with a dark scrim over it
+ * so the wordmark/keg icons/text stay readable against a busy photo --
+ * same reasoning as any UI laying text over a photographic background.
+ * Path is relative to wherever kegstation_sim is run from (see the
+ * README's "Run" section -- from software/kegstation/). The flat dark
+ * color set first is a fallback if the image fails to load, and shows
+ * through at the edges the photo's aspect ratio doesn't cover. */
+#define BACKGROUND_IMAGE_PATH "A:assets/sallauprampen.jpg"
+
 static void style_screen_background(lv_obj_t * scr)
 {
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x1B1E24), 0);
-    lv_obj_set_style_bg_grad_color(scr, lv_color_hex(0x262B33), 0);
-    lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
+
+    lv_obj_t * bg_img = lv_image_create(scr);
+    lv_image_set_src(bg_img, BACKGROUND_IMAGE_PATH);
+    lv_obj_set_size(bg_img, SCREEN_W, SCREEN_H);
+    lv_image_set_inner_align(bg_img, LV_IMAGE_ALIGN_COVER);
+    lv_obj_align(bg_img, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    lv_obj_t * scrim = lv_obj_create(scr);
+    lv_obj_remove_style_all(scrim);
+    lv_obj_set_size(scrim, SCREEN_W, SCREEN_H);
+    lv_obj_align(scrim, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_set_style_bg_color(scrim, lv_color_hex(0x0A0C10), 0);
+    lv_obj_set_style_bg_opa(scrim, 170, 0); /* ~67% -- dark enough to read text, photo still visible */
 }
 
 /* "Sallaup Electronics" / "KEGSTATION" text wordmark -- the branding

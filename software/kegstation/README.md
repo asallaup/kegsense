@@ -9,14 +9,15 @@ demoed well before the real hardware arrives. Only the display/input
 *driver* differs between simulator and hardware — `src/ui.c` is the actual
 production UI code, identical either way.
 
-**Status**: navigation skeleton only. Opens a keg-select screen — dark
-charcoal gradient background, a "SALLAUP ELECTRONICS / KEGSTATION" text
-wordmark at top (no image logo exists yet, see `build_wordmark()` in
-`ui.c`) — showing 5 Cornelius-keg icons in a row (rounded steel-gray
-body, two posts on top, a vertical rectangular `lv_bar` inset into the
-body for fill level, and the settled red/green sensor-connection dot)
-that drills into a per-keg "Tare / Set Full / Back" screen (same dark
-background, no wordmark there). The fill bar is colored by
+**Status**: navigation skeleton only. Opens a keg-select screen — a
+background photo of the actual Sallaup rig (`assets/sallauprampen.jpg`)
+under a dark scrim for text legibility, a "SALLAUP ELECTRONICS /
+KEGSTATION" text wordmark at top (no separate image logo, see
+`build_wordmark()` in `ui.c`) — showing 5 Cornelius-keg icons in a row
+(rounded steel-gray body, two posts on top, a vertical rectangular
+`lv_bar` inset into the body for fill level, and the settled red/green
+sensor-connection dot) that drills into a per-keg "Tare / Set Full /
+Back" screen (same background, no wordmark there). The fill bar is colored by
 level — green ≥50%, yellow ≥20%, red ≥5%, and **blinking red** below
 5% (an infinite-repeat opacity animation on the bar's indicator part).
 Fill levels and sensor status are both faked (`keg_fill_level()` /
@@ -61,10 +62,19 @@ Opens a 480×320 window (matching the real panel's resolution). Controls:
 ## Layout
 
 - `lv_conf.h` — LVGL config, copied from `extern/lvgl/lv_conf_template.h`
-  with two changes: the top `#if 0` flipped to `#if 1` to enable the file,
-  and `LV_USE_SDL` flipped to `1`. Left everything else at LVGL's own
-  defaults (`LV_COLOR_DEPTH 16` matches the RGB565 pixel format already
-  planned for the real SPI driver).
+  with targeted changes: top `#if 0` flipped to `#if 1` to enable the
+  file; `LV_USE_SDL` on for the simulator; `LV_FONT_MONTSERRAT_24` on
+  for the wordmark's title line (only size 14 was on by default);
+  `LV_USE_TJPGD` on (LVGL's own built-in JPEG decoder, no external
+  library needed — matters for the real Zero 2 W target) and
+  `LV_USE_FS_STDIO` on (drive letter `A:`) so the background photo can
+  be loaded from a file. Left everything else at LVGL's own defaults
+  (`LV_COLOR_DEPTH 16` matches the RGB565 pixel format already planned
+  for the real SPI driver).
+- `assets/sallauprampen.jpg` — the background photo (the actual Sallaup
+  rig). Loaded via `LV_USE_FS_STDIO`, path relative to wherever
+  `kegstation_sim` is run from (see "Run" above — from
+  `software/kegstation/`).
 - `extern/lvgl/` — LVGL itself, as a git submodule (run
   `git submodule update --init` if it's empty after cloning this repo).
   Currently pinned to a `master` snapshot (v9.6.0-dev), not a tagged
@@ -95,3 +105,9 @@ Opens a 480×320 window (matching the real panel's resolution). Controls:
   if this grows into the real implementation.
 - LVGL is pinned to whatever `master` commit was current when the
   submodule was added, not a tagged release.
+- The background image path (`A:assets/sallauprampen.jpg`) is relative
+  to the process's working directory, not the binary's location — run
+  `kegstation_sim` from `software/kegstation/` (as documented above) or
+  the image silently fails to load and just the flat dark fallback
+  color shows. The real-hardware build (`main_hw.c`) doesn't use this
+  at all yet — no equivalent background-image code there.
