@@ -7,12 +7,14 @@
 
 #define NUM_KEGS 5
 
-/* Cornelius keg icon geometry, in pixels. */
-#define KEG_W        60
-#define KEG_H        140
+/* Cornelius keg icon geometry, in pixels. Sized to use the 320px screen
+ * height fully (was 60x140, leaving ~90px of dead space below the row;
+ * now fills down to just above the bottom edge). */
+#define KEG_W        80
+#define KEG_H        190
 #define KEG_SPACING  92   /* distance between keg centers */
 #define KEG_ROW_Y    62   /* leaves room for the two-line wordmark above */
-#define POST_D       12   /* gas-in/liquid-out post diameter */
+#define POST_D       14   /* gas-in/liquid-out post diameter */
 #define BAR_W        (KEG_W - 18)
 #define BAR_H        (KEG_H - 46)  /* leaves headspace for the posts/dome */
 
@@ -157,7 +159,7 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
         lv_obj_set_size(post, POST_D, POST_D);
         lv_obj_set_style_radius(post, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(post, lv_color_hex(0x2E3136), 0);
-        lv_obj_align(post, LV_ALIGN_TOP_MID, (p == 0) ? -12 : 12, 4);
+        lv_obj_align(post, LV_ALIGN_TOP_MID, (p == 0) ? -16 : 16, 4);
     }
 
     /* Fill-level bar, inset into the body, filling bottom-up, colored
