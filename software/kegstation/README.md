@@ -62,6 +62,13 @@ Opens a 480×320 window (matching the real panel's resolution). Controls:
 - `src/ui.c` / `src/ui.h` — the actual UI: keg-select screen, per-keg
   detail screen, navigation group. This is the file that matters — it's
   meant to run unmodified on real hardware.
+- `src/main_hw.c` — the real-hardware counterpart to `main.c`: drives an
+  ILI9488 SPI TFT + 5 GPIO buttons via `pigpio` instead of SDL2, calling
+  the same `kegstation_ui_build()`. **Not built or tested** — no CMake
+  target links it, and it can't be verified until real hardware exists
+  (same standard as the rest of this project). Every LVGL call in it was
+  checked against the real v9.6 headers here, but the GPIO pin numbers
+  and ILI9488 init register values are still placeholders.
 
 ## Known rough edges
 
