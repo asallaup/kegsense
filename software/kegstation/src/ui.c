@@ -11,6 +11,7 @@
 #define KEG_W        60
 #define KEG_H        140
 #define KEG_SPACING  92   /* distance between keg centers */
+#define KEG_ROW_Y    62   /* leaves room for the two-line wordmark above */
 #define POST_D       12   /* gas-in/liquid-out post diameter */
 #define BAR_W        (KEG_W - 18)
 #define BAR_H        (KEG_H - 46)  /* leaves headspace for the posts/dome */
@@ -140,7 +141,7 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
     lv_obj_remove_style_all(keg);
     lv_obj_add_flag(keg, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_size(keg, KEG_W, KEG_H);
-    lv_obj_align(keg, LV_ALIGN_TOP_MID, x_ofs, 40);
+    lv_obj_align(keg, LV_ALIGN_TOP_MID, x_ofs, KEG_ROW_Y);
 
     /* Keg body: rounded rect, brushed-steel gray. */
     lv_obj_set_style_radius(keg, 14, 0);
@@ -191,7 +192,8 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
     char buf[16];
     snprintf(buf, sizeof(buf), "Keg %d", keg_num);
     lv_label_set_text(label, buf);
-    lv_obj_align(label, LV_ALIGN_TOP_MID, x_ofs, 40 + KEG_H + 6);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xE4E7EA), 0); /* readable on the dark background */
+    lv_obj_align(label, LV_ALIGN_TOP_MID, x_ofs, KEG_ROW_Y + KEG_H + 6);
 
     lv_obj_add_event_cb(keg, keg_button_event_cb, LV_EVENT_CLICKED,
                          (void *)(intptr_t)keg_num);
@@ -236,13 +238,42 @@ static void keg_button_event_cb(lv_event_t * e)
     build_keg_detail_screen(keg_num);
 }
 
+/* Dark charcoal background with a subtle top-to-bottom gradient, shared
+ * by both screens -- makes the amber/green/red fill colors read clearly
+ * (same reasoning as most embedded dashboard UIs favoring dark
+ * backgrounds), and complements the steel-gray keg bodies. */
+static void style_screen_background(lv_obj_t * scr)
+{
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x1B1E24), 0);
+    lv_obj_set_style_bg_grad_color(scr, lv_color_hex(0x262B33), 0);
+    lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
+}
+
+/* "Sallaup Electronics" / "KEGSTATION" text wordmark -- the branding
+ * used throughout this project's hardware docs, rendered here rather
+ * than an image logo (none exists yet). */
+static void build_wordmark(lv_obj_t * scr)
+{
+    lv_obj_t * brand = lv_label_create(scr);
+    lv_label_set_text(brand, "SALLAUP ELECTRONICS");
+    lv_obj_set_style_text_font(brand, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(brand, lv_color_hex(0x9AA0A8), 0);
+    lv_obj_set_style_text_letter_space(brand, 2, 0);
+    lv_obj_align(brand, LV_ALIGN_TOP_MID, 0, 6);
+
+    lv_obj_t * title = lv_label_create(scr);
+    lv_label_set_text(title, "KEGSTATION");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0xF2F4F6), 0);
+    lv_obj_set_style_text_letter_space(title, 2, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
+}
+
 static void build_keg_select_screen(void)
 {
     scr_keg_select = lv_obj_create(NULL);
-
-    lv_obj_t * title = lv_label_create(scr_keg_select);
-    lv_label_set_text(title, "KegStation");
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+    style_screen_background(scr_keg_select);
+    build_wordmark(scr_keg_select);
 
     /* Row of 5 Cornelius-keg icons, centered, each with its fill level
      * as a vertical bar inside the body. */
@@ -263,11 +294,14 @@ static void build_keg_detail_screen(int keg_num)
         lv_obj_delete(scr_keg_detail);
     }
     scr_keg_detail = lv_obj_create(NULL);
+    style_screen_background(scr_keg_detail);
 
     lv_obj_t * title = lv_label_create(scr_keg_detail);
     char title_buf[16];
     snprintf(title_buf, sizeof(title_buf), "Keg %d", keg_num);
     lv_label_set_text(title, title_buf);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0xF2F4F6), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
 
     lv_obj_t * list = lv_list_create(scr_keg_detail);
@@ -287,6 +321,7 @@ static void build_keg_detail_screen(int keg_num)
 
     detail_status_label = lv_label_create(scr_keg_detail);
     lv_label_set_text(detail_status_label, "");
+    lv_obj_set_style_text_color(detail_status_label, lv_color_hex(0xE4E7EA), 0);
     lv_obj_align(detail_status_label, LV_ALIGN_BOTTOM_MID, 0, -10);
 
     lv_group_remove_all_objs(group);

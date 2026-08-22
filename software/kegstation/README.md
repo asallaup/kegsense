@@ -9,11 +9,14 @@ demoed well before the real hardware arrives. Only the display/input
 *driver* differs between simulator and hardware — `src/ui.c` is the actual
 production UI code, identical either way.
 
-**Status**: navigation skeleton only. Opens a keg-select screen showing
-5 Cornelius-keg icons in a row (rounded steel-gray body, two posts on
-top, a vertical rectangular `lv_bar` inset into the body for fill level,
-and the settled red/green sensor-connection dot) that drills into a
-per-keg "Tare / Set Full / Back" screen. The fill bar is colored by
+**Status**: navigation skeleton only. Opens a keg-select screen — dark
+charcoal gradient background, a "SALLAUP ELECTRONICS / KEGSTATION" text
+wordmark at top (no image logo exists yet, see `build_wordmark()` in
+`ui.c`) — showing 5 Cornelius-keg icons in a row (rounded steel-gray
+body, two posts on top, a vertical rectangular `lv_bar` inset into the
+body for fill level, and the settled red/green sensor-connection dot)
+that drills into a per-keg "Tare / Set Full / Back" screen (same dark
+background, no wordmark there). The fill bar is colored by
 level — green ≥50%, yellow ≥20%, red ≥5%, and **blinking red** below
 5% (an infinite-repeat opacity animation on the bar's indicator part).
 Fill levels and sensor status are both faked (`keg_fill_level()` /
