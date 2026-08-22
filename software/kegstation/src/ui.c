@@ -19,7 +19,7 @@
 #define KEG_W        80
 #define KEG_H        190
 #define KEG_SPACING  92   /* distance between keg centers */
-#define KEG_ROW_Y    62   /* leaves room for the two-line wordmark above */
+#define KEG_ROW_Y    100  /* below the "Sallaup" sign in the background photo, which is now the branding */
 #define POST_D       14   /* gas-in/liquid-out post diameter */
 #define BAR_W        (KEG_W - 18)
 #define BAR_H        (KEG_H - 46)  /* leaves headspace for the posts/dome */
@@ -273,31 +273,10 @@ static void style_screen_background(lv_obj_t * scr)
     lv_obj_set_style_bg_opa(scrim, 170, 0); /* ~67% -- dark enough to read text, photo still visible */
 }
 
-/* "Sallaup Electronics" / "KEGSTATION" text wordmark -- the branding
- * used throughout this project's hardware docs, rendered here rather
- * than an image logo (none exists yet). */
-static void build_wordmark(lv_obj_t * scr)
-{
-    lv_obj_t * brand = lv_label_create(scr);
-    lv_label_set_text(brand, "SALLAUP ELECTRONICS");
-    lv_obj_set_style_text_font(brand, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(brand, lv_color_hex(0x9AA0A8), 0);
-    lv_obj_set_style_text_letter_space(brand, 2, 0);
-    lv_obj_align(brand, LV_ALIGN_TOP_MID, 0, 6);
-
-    lv_obj_t * title = lv_label_create(scr);
-    lv_label_set_text(title, "KEGSTATION");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(0xF2F4F6), 0);
-    lv_obj_set_style_text_letter_space(title, 2, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
-}
-
 static void build_keg_select_screen(void)
 {
     scr_keg_select = lv_obj_create(NULL);
     style_screen_background(scr_keg_select);
-    build_wordmark(scr_keg_select);
 
     /* Row of 5 Cornelius-keg icons, centered, each with its fill level
      * as a vertical bar inside the body. */
