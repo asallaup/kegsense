@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define NUM_KEGS 5
 
@@ -18,6 +20,13 @@ static lv_obj_t * scr_keg_select;
 static lv_obj_t * scr_keg_detail;
 static lv_obj_t * keg_buttons[NUM_KEGS];
 static lv_obj_t * detail_status_label;
+
+/* Live per-keg state for the simulator's "levels drift over time" demo
+ * (see level_update_timer_cb below). Indexed by keg_num - 1. Real
+ * hardware reads this from the daemon's readings file instead. */
+static lv_obj_t * keg_bars[NUM_KEGS];
+static int keg_levels[NUM_KEGS];
+static bool keg_blinking[NUM_KEGS];
 
 static void build_keg_select_screen(void);
 static void build_keg_detail_screen(int keg_num);
@@ -79,6 +88,46 @@ static void start_critical_blink(lv_obj_t * bar)
     lv_anim_start(&a);
 }
 
+/* Applies keg_levels[idx] to keg_bars[idx]: value, color, and
+ * starting/stopping the critical blink animation as it crosses the
+ * threshold (rather than restarting it every tick, which would look
+ * like a flicker/reset instead of a smooth blink). */
+static void update_keg_bar(int idx)
+{
+    lv_obj_t * bar = keg_bars[idx];
+    int level = keg_levels[idx];
+
+    lv_bar_set_value(bar, level, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(bar, keg_level_color(level), LV_PART_INDICATOR);
+
+    bool critical = keg_level_is_critical(level);
+    if (critical && !keg_blinking[idx]) {
+        start_critical_blink(bar);
+        keg_blinking[idx] = true;
+    } else if (!critical && keg_blinking[idx]) {
+        lv_anim_delete(bar, indicator_opa_anim_cb);
+        lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR); /* undo mid-fade */
+        keg_blinking[idx] = false;
+    }
+}
+
+/* Simulator-only: drifts each keg's level by a small random step every
+ * tick, so the row of kegs visibly changes over time instead of sitting
+ * static. Real hardware has no equivalent -- levels there only change
+ * because someone's actually pouring beer, read from the daemon. */
+static void level_update_timer_cb(lv_timer_t * timer)
+{
+    (void)timer;
+    for (int i = 0; i < NUM_KEGS; i++) {
+        int step = (rand() % 7) - 3; /* -3..+3 */
+        int level = keg_levels[i] + step;
+        if (level < 0) level = 0;
+        if (level > 100) level = 100;
+        keg_levels[i] = level;
+        update_keg_bar(i);
+    }
+}
+
 /* Builds one Cornelius-keg icon: a rounded stainless-steel-colored body
  * with two posts on top (gas-in/liquid-out, the recognizable Cornelius
  * silhouette), a vertical lv_bar inset into the body showing fill level,
@@ -111,20 +160,21 @@ static lv_obj_t * build_keg_icon(lv_obj_t * parent, int keg_num, int x_ofs)
     }
 
     /* Fill-level bar, inset into the body, filling bottom-up, colored
-     * green/yellow/red by level -- blinking red if critically low. */
-    int level = keg_fill_level(keg_num);
+     * green/yellow/red by level -- blinking red if critically low.
+     * Initial value/color/blink state set via update_keg_bar() so the
+     * build path and the periodic timer share the exact same logic. */
     lv_obj_t * bar = lv_bar_create(keg);
     lv_obj_set_size(bar, BAR_W, BAR_H); /* taller than wide -> vertical, per lv_bar's own hor=(w>=h) check */
     lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, -8);
     lv_bar_set_range(bar, 0, 100);
     lv_obj_set_style_bg_color(bar, lv_color_hex(0x6E7480), 0);       /* empty track */
     lv_obj_set_style_radius(bar, 0, 0);                              /* rectangle, not the default pill shape */
-    lv_obj_set_style_bg_color(bar, keg_level_color(level), LV_PART_INDICATOR);
     lv_obj_set_style_radius(bar, 0, LV_PART_INDICATOR);
-    lv_bar_set_value(bar, level, LV_ANIM_OFF);
-    if (keg_level_is_critical(level)) {
-        start_critical_blink(bar);
-    }
+
+    keg_bars[keg_num - 1] = bar;
+    keg_levels[keg_num - 1] = keg_fill_level(keg_num);
+    keg_blinking[keg_num - 1] = false;
+    update_keg_bar(keg_num - 1);
 
     /* Red/green sensor-connection status dot, top-right of the body. */
     lv_obj_t * status_dot = lv_obj_create(keg);
@@ -249,11 +299,16 @@ static void build_keg_detail_screen(int keg_num)
 
 void kegstation_ui_build(void)
 {
+    srand((unsigned)time(NULL));
+
     group = lv_group_create();
     lv_group_set_default(group);
 
     build_keg_select_screen();
     lv_screen_load(scr_keg_select);
+
+    /* Simulator-only random level drift -- see level_update_timer_cb. */
+    lv_timer_create(level_update_timer_cb, 1000, NULL);
 }
 
 lv_group_t * kegstation_ui_get_group(void)

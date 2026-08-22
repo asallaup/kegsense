@@ -19,7 +19,12 @@ level — green ≥50%, yellow ≥20%, red ≥5%, and **blinking red** below
 Fill levels and sensor status are both faked (`keg_fill_level()` /
 `keg_sensor_connected()` in `ui.c`, deliberately varied to demo all four
 color states at once) — real data comes from the C daemon's readings
-file once that exists. The Tare/Set Full buttons just update a status
+file once that exists. In the simulator, levels also drift randomly
+every second (`level_update_timer_cb`, simulator-only — real hardware
+has no equivalent, levels there only change because someone's actually
+pouring beer) so the row visibly updates instead of sitting static;
+colors and the critical blink animation start/stop correctly as each
+keg's level crosses a threshold. The Tare/Set Full buttons just update a status
 label for now — the real guided calibration wizard (place empty keg →
 confirm → select preset weight → confirm, see the hardware README's
 "On-unit calibration wizard") isn't wired up yet, this only demonstrates
