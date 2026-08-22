@@ -48,6 +48,23 @@ for the equivalent docs that preceded the KegSensor module).
   shifters needed. No Wi-Fi/radio inside the keezer itself (unchanged
   from the original hub design constraint) — KegStation sits outside the
   keezer, so its own Wi-Fi is unrelated to that constraint.
+  - **Bench/debug connector, settled: a 6th, dedicated DT channel — not
+    shared with any of the 5 production kegs.** A second RJ14 (6P4C)
+    jack, same connector type as KegSensor's own J7, mounted directly on
+    KegStation, for plugging in and testing a spare KegSensor without
+    touching KegHub or any deployed keg. Shares the common SCK/3.3V/GND
+    rails (safe — those are shared across all kegs anyway) but gets its
+    **own dedicated DT GPIO pin**, deliberately not reusing one of the 5
+    production DT lines: sharing a DT line would mean two HX711 modules
+    could end up driving the same GPIO simultaneously if a real keg is
+    plugged into KegHub at the same time as a test sensor here — a real
+    electrical bus-contention risk, not just a software mixup. One extra
+    GPIO pin is cheap on Zero 2 W's 40-pin header (no touchscreen, and
+    discrete buttons instead of a component-heavy nav switch, both free
+    up pins), so paying that cost to remove a real correctness risk is
+    worth it. The daemon reads this 6th channel too, but keeps it out of
+    the normal 5-keg dashboard/fill-bar logic — surfaced only through a
+    separate bench-test view, not mixed into live readings.
 - **Wi-Fi provisioning**: [Comitup](https://davesteele.github.io/comitup/)
   — Pi broadcasts a captive-portal setup network (SSID `KegStation-Setup`)
   on first boot / when no known network is available, works from any
@@ -423,8 +440,9 @@ for the equivalent docs that preceded the KegSensor module).
   implemented in code, and GPIO pin assignment for the 5-way nav
   switch isn't decided either.
 - Web dashboard framework, exact GPIO pin mapping for the shared-SCK +
-  5×DT KegSensor scheme, and the on-disk format/path for the readings
-  file the C daemon writes.
+  5×DT KegSensor scheme (now 6×DT including the dedicated bench/debug
+  channel above), and the on-disk format/path for the readings file the
+  C daemon writes.
 - Physical enclosure for KegStation itself (separate from the KegSensor
   case already built) — depends on the display/button decision above,
   and now also needs a pinhole cutout reaching the factory-reset button.
